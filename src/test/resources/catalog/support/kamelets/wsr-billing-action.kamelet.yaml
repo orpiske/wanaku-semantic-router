@@ -1,0 +1,43 @@
+apiVersion: camel.apache.org/v1
+kind: Kamelet
+metadata:
+  name: wsr-billing-action
+  labels:
+    camel.apache.org/kamelet.type: action
+  annotations:
+    barn.wanaku.ai/semantic-action: "true"
+    barn.wanaku.ai/routing-description: Questions about invoices, payments, and refunds.
+    barn.wanaku.ai/contract-profile: message-to-string-v1
+spec:
+  definition:
+    title: Billing support
+    description: Return a local billing demonstration response.
+    type: object
+    properties: {}
+  types:
+    in:
+      mediaType: text/plain
+      schema:
+        type: string
+    out:
+      mediaType: text/plain
+      schema:
+        type: string
+  dependencies:
+    - camel:core
+  template:
+    from:
+      uri: kamelet:source
+      steps:
+        - choice:
+            when:
+              - simple: "${body} == 'action_failure'"
+                steps:
+                  - throwException:
+                      exceptionType: java.lang.IllegalStateException
+                      message: Demonstration action failure
+            otherwise:
+              steps:
+                - setBody:
+                    constant: Billing demo response
+        - to: kamelet:sink

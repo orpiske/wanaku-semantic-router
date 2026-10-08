@@ -1,0 +1,6 @@
+# The image uses only the Maven distribution.
+**
+!target/
+!target/wanaku-semantic-router-*.jar
+!target/lib/
+!target/lib/**

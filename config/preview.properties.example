@@ -1,0 +1,12 @@
+wsr.preview.bind=127.0.0.1
+wsr.preview.port=8092
+wsr.preview.timeout-ms=10000
+wsr.preview.max-concurrent=4
+wsr.experts=supportExpert
+wsr.expert.supportExpert.class=org.apache.camel.component.typesafeai.TypeSafeAiSemanticAdapter
+camel.component.typesafe-ai.api-key={{env:TYPESAFE_API_KEY}}
+camel.component.typesafe-ai.model={{env:TYPESAFE_MODEL}}
+camel.component.typesafe-ai.request-timeout=5000
+camel.component.typesafe-ai.max-concurrent-requests=4
+# Set this when Barn connects across a private deployment network.
+# wsr.preview.token-env=WSR_PREVIEW_TOKEN

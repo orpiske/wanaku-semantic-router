@@ -1,0 +1,34 @@
+apiVersion: camel.apache.org/v1
+kind: Kamelet
+metadata:
+  name: wsr-technical-action
+  labels:
+    camel.apache.org/kamelet.type: action
+  annotations:
+    barn.wanaku.ai/semantic-action: "true"
+    barn.wanaku.ai/routing-description: Questions about bugs, outages, and technical problems.
+    barn.wanaku.ai/contract-profile: message-to-string-v1
+spec:
+  definition:
+    title: Technical support
+    description: Return a local technical demonstration response.
+    type: object
+    properties: {}
+  types:
+    in:
+      mediaType: text/plain
+      schema:
+        type: string
+    out:
+      mediaType: text/plain
+      schema:
+        type: string
+  dependencies:
+    - camel:core
+  template:
+    from:
+      uri: kamelet:source
+      steps:
+        - setBody:
+            constant: Technical demo response
+        - to: kamelet:sink

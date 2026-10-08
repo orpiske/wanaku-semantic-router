@@ -1,0 +1,70 @@
+# Publish support-route in Barn. Replace the image and route name before deployment.
+# Create the wsr-provider Secret with api-key. Its model key is optional.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wsr
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: wsr
+  template:
+    metadata:
+      labels:
+        app: wsr
+    spec:
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - name: wsr
+          image: wanaku-semantic-router:local
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+            seccompProfile:
+              type: RuntimeDefault
+          args: [runtime]
+          env:
+            - name: WSR_SEMANTIC_ROUTE
+              value: support-route
+            - name: WSR_BARN_URL
+              value: http://barn:8180
+            - name: WSR_REGISTRATION_URL
+              value: http://wanaku:8080
+            - name: WSR_MCP_ADDRESS
+              value: http://wsr:8090/mcp
+            - name: WSR_BIND
+              value: 0.0.0.0
+            - name: WSR_DATA_DIR
+              value: /home/wsr/tmp
+            - name: TYPESAFE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: wsr-provider
+                  key: api-key
+            - name: TYPESAFE_MODEL
+              valueFrom:
+                secretKeyRef:
+                  name: wsr-provider
+                  key: model
+                  optional: true
+          ports:
+            - name: mcp
+              containerPort: 8090
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wsr
+spec:
+  selector:
+    app: wsr
+  ports:
+    - name: mcp
+      port: 8090
+      targetPort: mcp

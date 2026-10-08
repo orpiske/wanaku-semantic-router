@@ -1,0 +1,54 @@
+- semantic:
+    question:
+      department:
+        type: choice
+        expert: supportExpert
+        state: "${body}"
+        instructions: Select the support action that can handle this request.
+        criteria:
+          billing: Questions about invoices, payments, and refunds.
+          technical: Questions about bugs, outages, and technical problems.
+          no_match: Requests that neither support action can handle.
+- route:
+    id: support-mcp-entry
+    from:
+      uri: ai-tool:route_support
+      parameters:
+        description: Route a support request to billing or technical support.
+        tags: wsr-support
+        parameter.message: string
+        parameter.message.required: "true"
+        parameter.message.description: The support request to evaluate.
+      steps:
+        - setBody:
+            simple: "${header.message}"
+        - to: direct:route-support
+- route:
+    id: support-dispatch
+    from:
+      uri: direct:route-support
+      steps:
+        - to: direct:classify-support
+        - choice:
+            when:
+              - simple: "${exchangeProperty.department} == 'billing'"
+                steps:
+                  - to: kamelet:wsr-billing-action
+              - simple: "${exchangeProperty.department} == 'technical'"
+                steps:
+                  - to: kamelet:wsr-technical-action
+            otherwise:
+              steps:
+                - setBody:
+                    constant: No suitable support action.
+- route:
+    id: support-classification
+    from:
+      uri: direct:classify-support
+      steps:
+        - setProperty:
+            name: department
+            expression:
+              language:
+                language: semantic
+                expression: ref:department

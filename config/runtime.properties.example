@@ -1,0 +1,22 @@
+wsr.barn.url=http://127.0.0.1:8080
+wsr.catalog.name=semantic-REPLACE-ID-1
+wsr.catalog.service=service
+wsr.catalog.revision=1
+wsr.catalog.sha256=REPLACE-WITH-PUBLICATION-SHA256
+wsr.wanaku.url=http://127.0.0.1:8080
+wsr.forward.name=semantic-support
+wsr.forward.namespace=default
+wsr.mcp.address=http://127.0.0.1:8090/mcp
+wsr.bind=127.0.0.1
+wsr.port=8090
+wsr.http.timeout-ms=30000
+wsr.status.port=8091
+wsr.experts=supportExpert
+wsr.expert.supportExpert.class=org.apache.camel.component.typesafeai.TypeSafeAiSemanticAdapter
+camel.component.typesafe-ai.api-key={{env:TYPESAFE_API_KEY}}
+camel.component.typesafe-ai.model={{env:TYPESAFE_MODEL}}
+camel.component.typesafe-ai.request-timeout=5000
+camel.component.typesafe-ai.max-concurrent-requests=8
+# Optional service credentials. Store values in the deployment environment.
+# wsr.barn.token-env=BARN_TOKEN
+# wsr.wanaku.token-env=WANAKU_TOKEN
