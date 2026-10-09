@@ -8,7 +8,7 @@ import picocli.CommandLine.Model.CommandSpec;
 
 @CommandLine.Command(
         name = "preview",
-        description = "Start an isolated classification service without loading action routes.",
+        description = "Start an isolated semantic evaluation service without loading action routes.",
         mixinStandardHelpOptions = true,
         versionProvider = Application.Version.class)
 final class PreviewCommand implements Callable<Integer> {
@@ -37,12 +37,12 @@ final class PreviewCommand implements Callable<Integer> {
 
     @CommandLine.Option(
             names = "--preview-timeout-ms",
-            description = "Classification timeout in milliseconds. Default: 10000.")
+            description = "Evaluation timeout in milliseconds. Default: 10000.")
     private void timeout(String value) {
         named.setProperty("wsr.preview.timeout-ms", value);
     }
 
-    @CommandLine.Option(names = "--max-concurrent", description = "Concurrent classifications. Default: 4.")
+    @CommandLine.Option(names = "--max-concurrent", description = "Concurrent evaluations. Default: 4.")
     private void concurrency(String value) {
         named.setProperty("wsr.preview.max-concurrent", value);
     }

@@ -1,14 +1,15 @@
 - semantic:
-    question:
+    evaluation:
       department:
-        type: choice
+        operation: choice
         expert: supportExpert
         state: "${body}"
-        instructions: Select the support action that can handle this request.
-        criteria:
-          billing: Questions about invoices, payments, and refunds.
-          technical: Questions about bugs, outages, and technical problems.
-          no_match: Requests that neither support action can handle.
+        parameters:
+          instructions: Select the support action that can handle this request.
+          criteria:
+            billing: Questions about invoices, payments, and refunds.
+            technical: Questions about bugs, outages, and technical problems.
+            no_match: Requests that neither support action can handle.
 - route:
     id: support-mcp-entry
     from:
