@@ -7,8 +7,8 @@ WSR follows the Camel Integration Capability startup sequence. It initializes de
 Supply `--init-from` on the `runtime` or `preview` command. Set `--data-dir` to a directory that the service user can write.
 
 ```sh
-java -jar target/wanaku-semantic-router-0.1.0-SNAPSHOT.jar runtime --init-from https://github.com/example/wsr-deployment.git --data-dir /var/lib/wsr support/runtime.properties
-java -jar target/wanaku-semantic-router-0.1.0-SNAPSHOT.jar preview --init-from https://github.com/example/wsr-deployment.git --data-dir /var/lib/wsr support/preview.properties
+java -jar target/wanaku-semantic-router-0.3.0-SNAPSHOT.jar runtime --init-from https://github.com/example/wsr-deployment.git --data-dir /var/lib/wsr support/runtime.properties
+java -jar target/wanaku-semantic-router-0.3.0-SNAPSHOT.jar preview --init-from https://github.com/example/wsr-deployment.git --data-dir /var/lib/wsr support/preview.properties
 ```
 
 WSR clones into `DATA_DIR/cloned-repo`. A relative deployment path resolves inside that repository. The path must remain inside the repository after symbolic links are resolved. An absolute deployment path can refer to a separate file.

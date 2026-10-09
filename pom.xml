@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>ai.wanaku</groupId>
   <artifactId>wanaku-semantic-router</artifactId>
-  <version>0.1.0-SNAPSHOT</version>
+  <version>0.3.0-SNAPSHOT</version>
   <scm>
     <connection>scm:git:https://github.com/wanaku-ai/wanaku-semantic-router.git</connection>
     <developerConnection>scm:git:https://github.com/wanaku-ai/wanaku-semantic-router.git</developerConnection>

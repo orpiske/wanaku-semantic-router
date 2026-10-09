@@ -9,7 +9,7 @@ WSR runs under its service authority. Its configured backend credentials determi
 3. Start WSR with the route name.
 
 ```sh
-java -jar target/wanaku-semantic-router-0.1.0-SNAPSHOT.jar runtime \
+java -jar target/wanaku-semantic-router-0.3.0-SNAPSHOT.jar runtime \
   --semantic-route support-route
 ```
 
@@ -18,7 +18,7 @@ This local command uses Barn at `http://localhost:8180`, Wanaku management at `h
 Use different service addresses with these options:
 
 ```sh
-java -jar target/wanaku-semantic-router-0.1.0-SNAPSHOT.jar runtime \
+java -jar target/wanaku-semantic-router-0.3.0-SNAPSHOT.jar runtime \
   --semantic-route support-route \
   --barn-url http://barn:8180 \
   --registration-url http://wanaku:8080 \
@@ -75,7 +75,7 @@ Use catalog options when you already have the publication metadata. This mode re
 Replace the catalog name, revision, and digest in this example. Set `TYPESAFE_API_KEY` and `TYPESAFE_MODEL` in the process environment before startup.
 
 ```sh
-java -jar target/wanaku-semantic-router-0.1.0-SNAPSHOT.jar runtime \
+java -jar target/wanaku-semantic-router-0.3.0-SNAPSHOT.jar runtime \
   --barn-url http://barn:8080 \
   --service-catalog semantic-REPLACE-ID-1 \
   --service-catalog-system service \
@@ -126,7 +126,7 @@ An explicit `--data-dir` also selects runtime catalog storage. An explicit `--wo
 Existing deployment files remain supported. Use one positional file or `--config FILE`. Do not supply both forms. File settings apply first. Environment settings override them. Repeatable `--property` values override both sources. Named options override all earlier sources. Argument order does not change this precedence. The last value wins for a repeated property key. Supply each named scalar option once. Repeated scalar options return a usage error.
 
 ```sh
-java -jar target/wanaku-semantic-router-0.1.0-SNAPSHOT.jar runtime \
+java -jar target/wanaku-semantic-router-0.3.0-SNAPSHOT.jar runtime \
   --config /etc/wsr/runtime.properties --mcp-port 8090
 ```
 
@@ -155,7 +155,7 @@ The Kafka dependency uses the packaged Camel version. Other Camel components mus
 Configure the same expert bean and provider settings as the runtime. Start the semantic evaluation service.
 
 ```sh
-java -jar target/wanaku-semantic-router-0.1.0-SNAPSHOT.jar preview \
+java -jar target/wanaku-semantic-router-0.3.0-SNAPSHOT.jar preview \
   --bind 0.0.0.0 --port 8092 \
   --preview-timeout-ms 10000 --max-concurrent 4 \
   --preview-token-env WSR_PREVIEW_TOKEN \

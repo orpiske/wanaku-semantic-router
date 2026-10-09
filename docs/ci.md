@@ -27,7 +27,7 @@ GitHub release jobs use the automatically supplied `GITHUB_TOKEN` with `contents
 
 ## Manual releases
 
-For early access, dispatch `early-access` from the development branch with `currentDevelopmentVersion` matching the POM version, including `-SNAPSHOT` (for example, `0.1.0-SNAPSHOT`).
+For early access, dispatch `early-access` from the development branch with `currentDevelopmentVersion` matching the POM version, including `-SNAPSHOT` (for example, `0.3.0-SNAPSHOT`).
 
 For a release, dispatch `release` with a release version without `-SNAPSHOT`, the next development version without `-SNAPSHOT`, and an existing release branch. For example: `0.1.0`, `0.1.1`, and `0.1.x`. The workflow creates `wanaku-semantic-router-0.1.0` and updates the branch to `0.1.1-SNAPSHOT`. WSR currently uses Camel and SDK snapshots, which release preparation explicitly permits.
 

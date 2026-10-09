@@ -15,7 +15,7 @@ mvn -B -ntp -f ../sdk/pom.xml clean install
 mvn -B -ntp clean verify
 ```
 
-The build creates `target/wanaku-semantic-router-0.1.0-SNAPSHOT.jar` and `target/lib/`. Keep the JAR and the library directory together. The JAR manifest contains the library paths. The tests use a local HTTP provider fixture. They do not need paid inference or backend services.
+The build creates `target/wanaku-semantic-router-0.3.0-SNAPSHOT.jar` and `target/lib/`. Keep the JAR and the library directory together. The JAR manifest contains the library paths. The tests use a local HTTP provider fixture. They do not need paid inference or backend services.
 
 The runtime uses Camel `4.23.0-SNAPSHOT` artifacts containing [PR #27494](https://github.com/apache/camel/pull/27494). Republish catalogs using `semantic.evaluation`; old `semantic.question` YAML is incompatible. Migrate Barn preview clients to the new request and response contract before deployment. The Camel BOM manages all Camel dependency versions. Maven resolves the current snapshot artifacts during a build. A later build can resolve different binaries. Preserve the complete packaged distribution or container image digest to reproduce a deployment.
 
@@ -33,11 +33,11 @@ mvn -B -ntp spotless:check
 Start a published semantic route by its Barn name. Set `TYPESAFE_API_KEY` in the process environment for the default TypeSafe AI expert. A deployment properties file is optional. Use [deployment](docs/deployment.md) for environment settings and a Kubernetes/OpenShift example.
 
 ```sh
-java -jar target/wanaku-semantic-router-0.1.0-SNAPSHOT.jar --help
-java -jar target/wanaku-semantic-router-0.1.0-SNAPSHOT.jar --version
-java -jar target/wanaku-semantic-router-0.1.0-SNAPSHOT.jar runtime --semantic-route support-route
-java -jar target/wanaku-semantic-router-0.1.0-SNAPSHOT.jar runtime --help
-java -jar target/wanaku-semantic-router-0.1.0-SNAPSHOT.jar preview --help
+java -jar target/wanaku-semantic-router-0.3.0-SNAPSHOT.jar --help
+java -jar target/wanaku-semantic-router-0.3.0-SNAPSHOT.jar --version
+java -jar target/wanaku-semantic-router-0.3.0-SNAPSHOT.jar runtime --semantic-route support-route
+java -jar target/wanaku-semantic-router-0.3.0-SNAPSHOT.jar runtime --help
+java -jar target/wanaku-semantic-router-0.3.0-SNAPSHOT.jar preview --help
 ```
 
 Local route startup defaults to Barn at `http://localhost:8180` and Wanaku at `http://localhost:8080`. WSR resolves the current published catalog once. It verifies the fixed revision and digest before startup. It keeps that publication until restart. Kubernetes can set `WSR_SEMANTIC_ROUTE`, `WSR_BARN_URL`, `WSR_REGISTRATION_URL`, and `WSR_MCP_ADDRESS`.
