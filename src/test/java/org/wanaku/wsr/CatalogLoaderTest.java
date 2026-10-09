@@ -65,6 +65,31 @@ class CatalogLoaderTest {
     }
 
     @Test
+    void validatesOptionalGuardManifest() throws Exception {
+        for (String guard : List.of(
+                "guard.expert.bean=injectionGuard\nguard.operation=injection\nguard.rejectWhen=true",
+                "guard.expert.bean=injectionGuard\nguard.operation=injection\nguard.rejectWhen=false",
+                "guard.operation=injection\nguard.rejectWhen=true",
+                "guard.expert.bean=injectionGuard\nguard.operation=injection\nguard.rejectWhen=invalid")) {
+            var contents = RuntimeTest.reference();
+            String manifest = new String(contents.get("support/semantic-router.properties"), StandardCharsets.UTF_8);
+            contents.put(
+                    "support/semantic-router.properties", (manifest + "\n" + guard).getBytes(StandardCharsets.UTF_8));
+            byte[] archive = RuntimeTest.archive(contents);
+            if (!guard.startsWith("guard.expert.bean=") || guard.endsWith("invalid")) {
+                assertThrows(IOException.class, () -> extract(archive));
+            } else {
+                var catalog = extract(archive);
+                try {
+                    assertEquals("injectionGuard", catalog.manifest().getProperty("guard.expert.bean"));
+                } finally {
+                    CatalogLoader.delete(catalog.root());
+                }
+            }
+        }
+    }
+
+    @Test
     void rejectsIncompatibleCamelVersion() throws Exception {
         var contents = RuntimeTest.reference();
         String manifest = new String(contents.get("support/semantic-router.properties"), StandardCharsets.UTF_8)

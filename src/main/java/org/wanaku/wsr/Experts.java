@@ -1,7 +1,9 @@
 package org.wanaku.wsr;
 
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import org.apache.camel.CamelContextAware;
 import org.apache.camel.Service;
 import org.apache.camel.main.Main;
@@ -39,10 +41,14 @@ final class Experts {
         }
         String allowed = RuntimeSettings.required(settings, "wsr.experts");
         boolean found = false;
+        Set<String> enabled = new HashSet<>();
         for (String name : allowed.split(",")) {
             name = RuntimeSettings.identifier(name.trim());
             if (name.equals(selected)) {
                 found = true;
+            }
+            if (!enabled.add(name)) {
+                throw new IllegalArgumentException("Duplicate configured expert bean");
             }
             String className = RuntimeSettings.required(settings, "wsr.expert." + name + ".class");
             Class<?> type = Thread.currentThread().getContextClassLoader().loadClass(className);
@@ -51,6 +57,10 @@ final class Experts {
                 throw new IllegalArgumentException("Configured expert does not implement SemanticAdapter");
             }
             main.bind(name, bean);
+        }
+        String guard = settings.getProperty("wsr.semantic-route.guard-bean");
+        if (guard != null && !enabled.contains(guard)) {
+            throw new IllegalArgumentException("Guard expert is not enabled for this deployment");
         }
         if (!found) {
             throw new IllegalArgumentException("Selected expert is not enabled for this deployment");
@@ -67,6 +77,7 @@ final class Experts {
             if (bean instanceof CamelContextAware aware) {
                 aware.setCamelContext(main.getCamelContext());
             }
+            ExpertProperties.bind(main, settings, name.trim(), bean);
             if (bean instanceof Service service) {
                 main.getCamelContext().addService(service);
             }

@@ -170,6 +170,17 @@ public final class CatalogLoader {
             throw new IOException("Catalog resource is missing");
         }
         RuntimeSettings.identifier(RuntimeSettings.required(manifest, "expert.bean"));
+        String guard = manifest.getProperty("guard.expert.bean");
+        if (guard != null) {
+            RuntimeSettings.identifier(guard);
+            RuntimeSettings.identifier(RuntimeSettings.required(manifest, "guard.operation"));
+            String rejectWhen = RuntimeSettings.required(manifest, "guard.rejectWhen");
+            if (!rejectWhen.equals("true") && !rejectWhen.equals("false")) {
+                throw new IOException("Invalid guard rejection polarity");
+            }
+        } else if (manifest.containsKey("guard.operation") || manifest.containsKey("guard.rejectWhen")) {
+            throw new IOException("Guard expert bean is missing");
+        }
         RuntimeSettings.identifier(RuntimeSettings.required(manifest, "tool.name"));
         return new Catalog(root, main, kamelets, dependencies, manifest);
     }

@@ -230,3 +230,43 @@ The workflow publishes an image for each architecture:
 | `v0.1.0` | `v0.1.0-x86_64` | `v0.1.0-aarch64` | `v0.1.0` |
 
 `images.txt` lists the combined image name. `build-manifests.sh` creates and pushes the combined manifest after both native image pushes succeed. The manifest lets the container engine select the host architecture. Use a combined manifest digest when deployment must retain both architectures. Use an architecture image digest when deployment uses one architecture.
+
+### Classifier and guard experts
+
+Enable every expert referenced by the published catalog explicitly. The classifier
+remains `expert.bean`; an optional Boolean guard uses `guard.expert.bean`,
+`guard.operation`, and `guard.rejectWhen` in the catalog manifest. Missing guard
+beans fail startup before readiness or forward registration.
+
+Repeat `--expert` for the classifier and guard:
+
+```shell
+--expert supportExpert=org.apache.camel.component.typesafeai.TypeSafeAiSemanticAdapter \
+--expert injectionGuard=org.apache.camel.component.wolfdefender.WolfDefenderSemanticAdapter \
+-p 'wsr.expert.injectionGuard.properties.modelDirectory={{env:WOLF_MODEL_DIRECTORY}}'
+```
+
+Bean properties use `wsr.expert.<bean>.properties.<property>` in deployment files
+or `--property` options. Camel resolves property placeholders and converts values
+to setter types before native evaluation validation and service startup. Unknown
+properties or invalid values fail startup with sanitized diagnostics. Credentials
+and model paths belong to the deployment; Barn catalogs contain no such settings.
+
+The distribution includes `camel-wolf-defender` at the same Camel version as the
+semantic language. Provision its pinned model and tokenizer files locally, then
+set `WOLF_MODEL_DIRECTORY` to that directory. WSR never downloads model files.
+Camel owns each expert's lifecycle, including shutdown of model resources.
+Deploy this runtime before publishing guarded catalogs; restart for new revisions.
+
+Run the provisioned-model smoke test with
+`WOLF_MODEL_DIRECTORY=/models/wolf-defender mvn -Dtest=WolfDefenderIntegrationTest test`.
+Without that variable the test is skipped; deterministic guard routing tests
+cover rejection, evaluation failure, and accepted dispatch without inference.
+
+Initial verification used a locally installed Camel `4.23.0-SNAPSHOT` Wolf
+Defender JAR (Maven metadata timestamp `20261009105227`, SHA-256
+`c69acd50a02108d28292b733bd334bdeaaff399c32669df60cad2aadf30a5da0`).
+Camel PR 27564 was merged as `5073253e66bdfa0f9f8cc80c8900a97466b0740c`.
+These identify the verified artifact and upstream change, rather than pinning
+future snapshot resolution. Release builds must verify that the selected Camel
+snapshot contains the native `injection` operation and `modelDirectory` property.

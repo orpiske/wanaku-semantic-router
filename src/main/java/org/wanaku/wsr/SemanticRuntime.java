@@ -112,6 +112,10 @@ public final class SemanticRuntime implements AutoCloseable {
         main.addProperty("camel.server.mcp-enabled", "true");
         main.addProperty("camel.server.mcp-tags", catalog.manifest().getProperty("tool.tags", "wsr-semantic-router"));
         main.addProperty("camel.server.mcp-server-name", settings.registration().forwardName());
+        String guard = catalog.manifest().getProperty("guard.expert.bean");
+        if (guard != null) {
+            settings.deployment().setProperty("wsr.semantic-route.guard-bean", guard);
+        }
         Experts.configure(main, settings.deployment(), catalog.manifest().getProperty("expert.bean"));
         main.getCamelContext().setApplicationContextClassLoader(dependencies.classLoader());
     }
