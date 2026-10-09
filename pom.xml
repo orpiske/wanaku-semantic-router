@@ -4,6 +4,12 @@
   <groupId>ai.wanaku</groupId>
   <artifactId>wanaku-semantic-router</artifactId>
   <version>0.1.0-SNAPSHOT</version>
+  <scm>
+    <connection>scm:git:https://github.com/wanaku-ai/wanaku-semantic-router.git</connection>
+    <developerConnection>scm:git:https://github.com/wanaku-ai/wanaku-semantic-router.git</developerConnection>
+    <url>https://github.com/wanaku-ai/wanaku-semantic-router</url>
+    <tag>HEAD</tag>
+  </scm>
   <properties>
     <maven.compiler.release>21</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -163,6 +169,15 @@
   <build>
     <plugins>
       <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-release-plugin</artifactId>
+        <version>3.1.1</version>
+        <configuration>
+          <pushChanges>false</pushChanges>
+          <tagNameFormat>wanaku-semantic-router-@{project.version}</tagNameFormat>
+        </configuration>
+      </plugin>
+      <plugin>
         <groupId>com.diffplug.spotless</groupId>
         <artifactId>spotless-maven-plugin</artifactId>
         <version>${spotless-maven-plugin.version}</version>
@@ -239,6 +254,11 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-failsafe-plugin</artifactId>
         <version>${maven-failsafe-plugin.version}</version>
+        <configuration>
+          <systemPropertyVariables>
+            <packagedJar>${project.build.directory}/${project.build.finalName}.jar</packagedJar>
+          </systemPropertyVariables>
+        </configuration>
         <executions><execution><goals><goal>integration-test</goal><goal>verify</goal></goals></execution></executions>
       </plugin>
     </plugins>

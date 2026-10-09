@@ -1,0 +1,103 @@
+name: release
+on:
+  workflow_dispatch:
+    inputs:
+      currentDevelopmentVersion:
+        description: The release version
+        required: true
+        type: string
+      nextDevelopmentVersion:
+        description: The next development version, without -SNAPSHOT
+        required: true
+        type: string
+      releaseBranch:
+        description: The release branch (for example, 0.1.x)
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: release-${{ inputs.releaseBranch }}
+  cancel-in-progress: false
+jobs:
+  release:
+    if: github.repository == 'wanaku-ai/wanaku-semantic-router'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    steps:
+      - name: Validate version
+        env:
+          RELEASE_VERSION: ${{ inputs.currentDevelopmentVersion }}
+        run: |
+          [[ "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9]+([.-][A-Za-z0-9]+)*)?$ ]] || exit 1
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.releaseBranch }}
+      - name: Set up JDK 21
+        uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5.5.0
+        with:
+          java-version: '21'
+          distribution: temurin
+          cache: maven
+      - name: Read SDK revision
+        id: sdk
+        run: echo "revision=$(cat .github/sdk-revision)" >> "$GITHUB_OUTPUT"
+      - name: Check out SDK
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          repository: wanaku-ai/wanaku-capabilities-java-sdk
+          ref: ${{ steps.sdk.outputs.revision }}
+          path: target/sdk
+          persist-credentials: false
+      - name: Install SDK
+        run: mvn -B -ntp -f target/sdk/pom.xml install -DskipTests
+      - name: Check committed formatting
+        run: mvn -B -ntp spotless:check
+      - name: Check manifest assembly
+        run: ./scripts/test-build-manifests.sh
+      - name: Create release
+        env:
+          RELEASE_VERSION: ${{ inputs.currentDevelopmentVersion }}
+          NEXT_VERSION: ${{ inputs.nextDevelopmentVersion }}
+          RELEASE_BRANCH: ${{ inputs.releaseBranch }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          [[ "$RELEASE_VERSION" != *-SNAPSHOT ]] || exit 1
+          [[ "$NEXT_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9]+([.-][A-Za-z0-9]+)*)?$ && "$NEXT_VERSION" != *-SNAPSHOT ]] || exit 1
+          git check-ref-format "refs/heads/$RELEASE_BRANCH"
+          git config user.name "$ACTOR"
+          git config user.email "$ACTOR@users.noreply.github.com"
+          mvn -B -ntp -Dtag="wanaku-semantic-router-$RELEASE_VERSION" \
+            -DreleaseVersion="$RELEASE_VERSION" -DdevelopmentVersion="$NEXT_VERSION-SNAPSHOT" \
+            -DignoreSnapshots=true release:prepare
+          mvn -B -ntp release:perform -Dgoals=verify -DlocalCheckout=true
+          git push origin "HEAD:refs/heads/$RELEASE_BRANCH" "refs/tags/wanaku-semantic-router-$RELEASE_VERSION"
+      - name: Package release runtime
+        env:
+          RELEASE_VERSION: ${{ inputs.currentDevelopmentVersion }}
+        run: |
+          cd target/checkout/target
+          zip -r "../../../target/wanaku-semantic-router-$RELEASE_VERSION.zip" "wanaku-semantic-router-$RELEASE_VERSION.jar" lib
+      - name: Run JReleaser
+        if: github.repository == 'wanaku-ai/wanaku-semantic-router'
+        uses: jreleaser/release-action@90ac653bb9c79d11179e65d81499f3f34527dcd5 # v2.5.0
+        env:
+          JRELEASER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          JRELEASER_PROJECT_VERSION: ${{ inputs.currentDevelopmentVersion }}
+          JRELEASER_PROJECT_SNAPSHOT_LABEL: early-access
+          JRELEASER_SELECT_CURRENT_PLATFORM: true
+          JRELEASER_GPG_PUBLIC_KEY: ${{ secrets.GPG_PUBLIC_KEY }}
+          JRELEASER_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
+          JRELEASER_GPG_SECRET_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+      - name: JReleaser release output
+        if: always() && (github.repository == 'wanaku-ai/wanaku-semantic-router')
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: jreleaser-release
+          path: |
+            out/jreleaser/trace.log
+            out/jreleaser/output.properties

@@ -3,14 +3,23 @@ on:
   pull_request:
     branches:
       - main
+      - '[0-9]*.[0-9]*.x'
 permissions:
   contents: read
 jobs:
   build:
+    continue-on-error: ${{ matrix.experimental }}
+    defaults:
+      run:
+        shell: bash
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, ubuntu-24.04-arm]
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest]
+        experimental: [false]
+        include:
+          - os: windows-latest
+            experimental: true
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
@@ -36,9 +45,21 @@ jobs:
       - name: Check committed formatting
         run: mvn -B -ntp spotless:check
       - name: Check manifest assembly
+        if: runner.os == 'Linux'
         run: ./scripts/test-build-manifests.sh
       - name: Build with Maven
         run: mvn -B -ntp clean verify
+      - name: Generate Test Reports
+        if: always()
+        run: mvn -B -ntp surefire-report:report-only surefire-report:failsafe-report-only -Daggregate=true
+      - name: Upload Test Reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: test-reports-${{ matrix.os }}
+          path: target/reports/
+          retention-days: 14
+          if-no-files-found: ignore
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -50,6 +71,8 @@ jobs:
           retention-days: 14
           if-no-files-found: ignore
       - name: Build container
+        if: runner.os == 'Linux'
         run: podman build -t wanaku-semantic-router:local .
       - name: Check runtime container
+        if: runner.os == 'Linux'
         run: ./scripts/container-smoke.sh wanaku-semantic-router:local

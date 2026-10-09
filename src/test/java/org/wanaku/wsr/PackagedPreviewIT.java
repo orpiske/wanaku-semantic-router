@@ -33,7 +33,7 @@ class PackagedPreviewIT {
             var arguments = new ArrayList<>(List.of(
                     Path.of(System.getProperty("java.home"), "bin/java").toString(),
                     "-jar",
-                    "target/wanaku-semantic-router-0.1.0-SNAPSHOT.jar",
+                    System.getProperty("packagedJar"),
                     "preview",
                     "--bind",
                     "127.0.0.1",
