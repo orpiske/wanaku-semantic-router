@@ -85,13 +85,13 @@ class PackagedPreviewIT {
             for (String expert : List.of("typesafe", "secondary")) {
                 var original = PreviewServiceTest.request(expert.equals("typesafe") ? "billing" : "technical");
                 var selected = new PreviewService.Request(
-                        original.input(), original.instructions(), original.criteria(), expert, original.message());
+                        expert, original.operation(), original.parameters(), original.state());
                 var response = http.send(
                         request(port, selected, "preview-fixture-token"), HttpResponse.BodyHandlers.ofString());
                 assertEquals(200, response.statusCode(), response.body() + "\n" + Files.readString(log));
                 assertEquals(
-                        selected.message(),
-                        RuntimeTest.JSON.readTree(response.body()).path("label").asText());
+                        selected.state(),
+                        RuntimeTest.JSON.readTree(response.body()).path("value").asText());
             }
             assertEquals(2, provider.evaluations.get());
             process.destroy();

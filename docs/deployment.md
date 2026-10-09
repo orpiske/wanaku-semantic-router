@@ -150,9 +150,9 @@ Use `env:KAFKA_PASSWORD` for a password parameter in Barn. Set `KAFKA_PASSWORD` 
 
 The Kafka dependency uses the packaged Camel version. Other Camel components must also be included in the WSR distribution before a catalog can declare them. WSR does not download another Camel version at startup.
 
-## Start classification preview
+## Start semantic evaluation preview
 
-Configure the same expert bean and provider settings as the runtime. Start the classification service.
+Configure the same expert bean and provider settings as the runtime. Start the semantic evaluation service.
 
 ```sh
 java -jar target/wanaku-semantic-router-0.1.0-SNAPSHOT.jar preview \
@@ -164,7 +164,7 @@ java -jar target/wanaku-semantic-router-0.1.0-SNAPSHOT.jar preview \
   --property 'camel.component.typesafe-ai.model={{env:TYPESAFE_MODEL}}'
 ```
 
-Set `WSR_PREVIEW_TOKEN`, `TYPESAFE_API_KEY`, and `TYPESAFE_MODEL` in the process environment before startup. Set Barn's preview URL to `http://wsr-preview:8092/api/v1/preview`. Configure the matching token reference in Barn. The service has no production action routes.
+Set `WSR_PREVIEW_TOKEN`, `TYPESAFE_API_KEY`, and `TYPESAFE_MODEL` in the process environment before startup. Set Barn's preview URL to `http://wsr-preview:8092/api/v1/preview`. Configure the matching token reference in Barn. The service creates an isolated Camel context per request without action routes. Barn must send `expertBean`, `operation`, optional `parameters` (default `{}`), and `state`; read `resultType`, typed `value`, and `diagnostics` from the response. See [the preview contract](artifact-contract.md#preview-boundary). Migrate old preview clients and republish catalogs using `semantic.evaluation` before deploying this runtime; it does not translate old question YAML.
 
 | Preview option | Property | Default |
 | --- | --- | --- |

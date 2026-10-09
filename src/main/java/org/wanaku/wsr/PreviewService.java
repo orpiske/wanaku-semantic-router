@@ -5,6 +5,8 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executors;
@@ -12,18 +14,29 @@ import java.util.concurrent.Semaphore;
 import org.apache.camel.Exchange;
 import org.apache.camel.language.semantic.SemanticLanguage;
 import org.apache.camel.main.Main;
-import org.apache.camel.semantic.SemanticQuestion;
-import org.apache.camel.semantic.SemanticQuestions;
+import org.apache.camel.semantic.SemanticAdapter;
+import org.apache.camel.semantic.SemanticCapabilities;
+import org.apache.camel.semantic.SemanticEvaluation;
+import org.apache.camel.semantic.SemanticEvaluations;
 import org.apache.camel.semantic.SemanticResult;
 import org.apache.camel.support.DefaultExchange;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 
-/** Classification-only worker. It never accepts executable YAML or loads action routes. */
+/** Isolated semantic evaluation worker. It never accepts executable YAML or loads action routes. */
 public final class PreviewService implements AutoCloseable {
-    public record Request(
-            String input, String instructions, Map<String, String> criteria, String expertBean, String message) {}
+    public record Request(String expertBean, String operation, Map<String, Object> parameters, Object state) {
+        public Request {
+            parameters = parameters == null ? Map.of() : parameters;
+        }
+    }
+
+    private static final class InvalidRequestException extends IllegalArgumentException {
+        private InvalidRequestException() {
+            super("Invalid preview contract");
+        }
+    }
 
     private static final ObjectMapper JSON = new ObjectMapper();
     private final Properties deployment;
@@ -111,7 +124,7 @@ public final class PreviewService implements AutoCloseable {
         }
         var evaluation = executor.submit(() -> {
             try {
-                return classify(request);
+                return evaluate(request);
             } finally {
                 slots.release();
             }
@@ -122,6 +135,9 @@ public final class PreviewService implements AutoCloseable {
         } catch (java.util.concurrent.TimeoutException e) {
             evaluation.cancel(true);
             respond(exchange, 504, Map.of("error", "evaluation_timeout"));
+        } catch (java.util.concurrent.ExecutionException e) {
+            boolean invalid = e.getCause() instanceof InvalidRequestException;
+            respond(exchange, invalid ? 400 : 502, Map.of("error", invalid ? "invalid_request" : "evaluation_failed"));
         } catch (Exception e) {
             evaluation.cancel(true);
             respond(exchange, 502, Map.of("error", "evaluation_failed"));
@@ -130,49 +146,74 @@ public final class PreviewService implements AutoCloseable {
         }
     }
 
-    public Map<String, Object> classify(Request request) throws Exception {
+    public Map<String, Object> evaluate(Request request) throws Exception {
         validate(request);
+        boolean enabled = List.of(
+                        RuntimeSettings.required(deployment, "wsr.experts").split(","))
+                .stream()
+                .map(String::trim)
+                .anyMatch(request.expertBean()::equals);
+        if (!enabled) {
+            throw new InvalidRequestException();
+        }
         Main main = new Main();
         try {
-            configureClassification(main, request);
+            SemanticCapabilities.Operation operation = configureEvaluation(main, request);
             main.start();
-            return evaluateClassification(main, request);
+            return evaluateNative(main, request, operation);
         } finally {
             main.stop();
         }
     }
 
-    private void configureClassification(Main main, Request request) throws Exception {
-        main.addProperty("camel.main.name", "wsr-classification-preview");
+    private SemanticCapabilities.Operation configureEvaluation(Main main, Request request) throws Exception {
+        main.addProperty("camel.main.name", "wsr-semantic-preview");
         Experts.configure(main, deployment, request.expertBean());
-        // Use the same native question contract as the generated YAML. No dispatch route exists.
-        SemanticQuestion question = new SemanticQuestion(
-                SemanticQuestion.Type.CHOICE,
-                request.instructions(),
-                "${body}",
-                request.criteria(),
-                null,
-                0.5,
-                0,
-                SemanticQuestion.UncertaintyPolicy.FAIL,
-                request.expertBean());
-        SemanticQuestions.get(main.getCamelContext()).replace("wsr:preview", Map.of("department", question));
+        SemanticAdapter adapter =
+                main.getCamelContext().getRegistry().lookupByNameAndType(request.expertBean(), SemanticAdapter.class);
+        SemanticCapabilities capabilities = SemanticCapabilities.from(adapter.getClass());
+        SemanticEvaluation evaluation;
+        SemanticCapabilities.Operation operation;
+        try {
+            evaluation =
+                    new SemanticEvaluation(request.operation(), request.expertBean(), "${body}", request.parameters());
+            operation = capabilities.operation(request.operation());
+            operation.validate(evaluation.getParameters());
+            operation.validateInput(request.state());
+            adapter.validate(evaluation);
+            adapter.validateInput(evaluation, request.state());
+        } catch (IllegalArgumentException e) {
+            // Only preflight validation failures are client errors; inference failures remain 502.
+            throw new InvalidRequestException();
+        }
+        SemanticEvaluations.get(main.getCamelContext()).replace("wsr:preview", Map.of("preview", evaluation));
+        return operation;
     }
 
-    private static Map<String, Object> evaluateClassification(Main main, Request request) {
+    private static Map<String, Object> evaluateNative(
+            Main main, Request request, SemanticCapabilities.Operation operation) {
         SemanticLanguage language = (SemanticLanguage) main.getCamelContext().resolveLanguage("semantic");
-        var expression = language.createExpression("ref:department");
+        var expression = language.createExpression("ref:preview");
         expression.init(main.getCamelContext());
         Exchange exchange = new DefaultExchange(main.getCamelContext());
-        exchange.getMessage().setBody(request.message());
-        String label = expression.evaluate(exchange, String.class);
+        exchange.getMessage().setBody(request.state());
+        Object value = expression.evaluate(exchange, Object.class);
         SemanticResult result = exchange.getProperty(SemanticLanguage.RESULT, SemanticResult.class);
-        return Map.of("label", label, "diagnostics", diagnostics(result));
+        return Map.of(
+                "resultType",
+                operation.getResultType().name().toLowerCase(Locale.ROOT),
+                "value",
+                value,
+                "diagnostics",
+                diagnostics(result));
     }
 
     private static Map<String, Object> diagnostics(SemanticResult result) {
         Map<String, Object> diagnostics = new LinkedHashMap<>();
         if (result != null) {
+            if (result.getProbability() != null) {
+                diagnostics.put("probability", result.getProbability());
+            }
             if (result.getConfidence() != null) {
                 diagnostics.put("confidence", result.getConfidence());
             }
@@ -184,37 +225,20 @@ public final class PreviewService implements AutoCloseable {
     }
 
     private static void validate(Request request) {
-        validateMessage(request);
-        validateCriteriaShape(request.criteria());
-        RuntimeSettings.identifier(request.expertBean());
-        validateCriteriaEntries(request.criteria());
-    }
-
-    private static void validateMessage(Request request) {
-        if (!"message".equals(request.input())
-                || request.instructions() == null
-                || request.instructions().isBlank()
-                || request.instructions().length() > 8192
-                || request.message() == null
-                || request.message().isBlank()
-                || request.message().length() > 32768) {
-            throw new IllegalArgumentException("Invalid preview contract");
+        if (request == null
+                || request.expertBean() == null
+                || request.operation() == null
+                || request.operation().isBlank()
+                || !(request.state() instanceof String
+                        || request.state() instanceof Map<?, ?>
+                        || request.state() instanceof List<?>)) {
+            throw new InvalidRequestException();
         }
-    }
-
-    private static void validateCriteriaShape(Map<String, String> criteria) {
-        if (criteria == null || criteria.size() < 2 || criteria.size() > 32 || !criteria.containsKey("no_match")) {
-            throw new IllegalArgumentException("Invalid preview contract");
+        try {
+            RuntimeSettings.identifier(request.expertBean());
+        } catch (IllegalArgumentException e) {
+            throw new InvalidRequestException();
         }
-    }
-
-    private static void validateCriteriaEntries(Map<String, String> criteria) {
-        criteria.forEach((label, criterion) -> {
-            RuntimeSettings.identifier(label);
-            if (criterion == null || criterion.isBlank() || criterion.length() > 8192) {
-                throw new IllegalArgumentException("Invalid criterion");
-            }
-        });
     }
 
     static void respond(HttpExchange exchange, int status, Object body) throws IOException {

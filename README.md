@@ -1,6 +1,6 @@
 # Wanaku Semantic Router
 
-Wanaku Semantic Router (WSR) runs a Barn catalog as an Apache Camel application. Barn authors and publishes the integration. Camel evaluates its semantic questions and executes fixed Kamelet branches. Wanaku discovers and governs the public MCP tool.
+Wanaku Semantic Router (WSR) runs a Barn catalog as an Apache Camel application. Barn authors and publishes the integration. Camel evaluates its semantic evaluations and executes fixed Kamelet branches. Wanaku discovers and governs the public MCP tool.
 
 This repository implements [Barn #182](https://github.com/wanaku-ai/wanaku-barn/issues/182) and the native runtime checks for [Barn #180](https://github.com/wanaku-ai/wanaku-barn/issues/180). [Wanaku #2101](https://github.com/wanaku-ai/wanaku/issues/2101) tracks the complete workstream.
 
@@ -17,7 +17,7 @@ mvn -B -ntp clean verify
 
 The build creates `target/wanaku-semantic-router-0.1.0-SNAPSHOT.jar` and `target/lib/`. Keep the JAR and the library directory together. The JAR manifest contains the library paths. The tests use a local HTTP provider fixture. They do not need paid inference or backend services.
 
-The runtime uses Camel `4.23.0-SNAPSHOT`. The Camel BOM manages all Camel dependency versions. Maven resolves the current snapshot artifacts during a build. A later build can resolve different binaries. Preserve the complete packaged distribution or container image digest to reproduce a deployment.
+The runtime uses Camel `4.23.0-SNAPSHOT` artifacts containing [PR #27494](https://github.com/apache/camel/pull/27494). Republish catalogs using `semantic.evaluation`; old `semantic.question` YAML is incompatible. Migrate Barn preview clients to the new request and response contract before deployment. The Camel BOM manages all Camel dependency versions. Maven resolves the current snapshot artifacts during a build. A later build can resolve different binaries. Preserve the complete packaged distribution or container image digest to reproduce a deployment.
 
 See [the contract](docs/artifact-contract.md) for the verified native APIs. See [deployment](docs/deployment.md) for runtime and preview setup. See [SDK reuse](docs/sdk-reuse.md) for shared catalog transport, extraction, and dependency resolution.
 
@@ -58,9 +58,9 @@ WSR uses the maintained LangChain4j MCP client for initialization and tool disco
 
 The MCP tool accepts `message`, a required string. A selected branch returns the action result. `no_match` returns the configured no-match text. Provider failures, malformed answers, and action failures return MCP tool errors. Evaluation output selects a fixed label. It cannot supply a destination URI.
 
-## Classification preview
+## Semantic evaluation preview
 
-The `preview` process exposes `POST /api/v1/preview`. It accepts semantic definition fields and a message. It creates a separate Camel context and evaluates the same native question contract. It loads no action routes or Kamelets. It returns the selected label and only the diagnostics supplied by the provider.
+The `preview` process exposes `POST /api/v1/preview`. Supply an enabled `expertBean`, an `operation`, optional expert-owned `parameters`, and `state`. It creates a separate Camel context and evaluates the native `SemanticEvaluation` contract without action routes or Kamelets. It returns `resultType`, a typed `value` (boolean, choice string, score number, or classification labels), and only the diagnostics supplied by the expert. See [the preview contract](docs/artifact-contract.md#preview-boundary) for examples and errors.
 
 The service limits concurrent evaluations and request size. It applies an evaluation timeout. A cancelled evaluation retains its capacity slot until the worker exits. Deployment configuration selects expert implementations and credentials. Barn receives no credential values.
 
@@ -68,4 +68,4 @@ The service limits concurrent evaluations and request size. It applies an evalua
 
 The reference checks cover native semantic selection, auxiliary Kamelet loading, MCP discovery and invocation, explicit no-match, provider failure, malformed results, archive safety, digest checks, runtime compatibility, fetch failure, failed Camel startup, failed registration cleanup, accepted POST response loss, full HTTP completion deadlines, action failure, preview timeout and capacity, registration ordering, shutdown, and a packaged JAR smoke test. Deterministic fixtures check integration behavior. They do not measure classification quality.
 
-For model evaluation, use a separate deployment and a representative set of saved examples. Run classification previews first. Compare each expected label with its actual label. Review no-match and error cases separately. Use demonstration actions before enabling operations with backend side effects. Record the provider, model, revision, and distribution or image digest with the results.
+For model evaluation, use a separate deployment and a representative set of saved examples. Run semantic evaluation previews first. Compare each expected label with its actual label. Review no-match and error cases separately. Use demonstration actions before enabling operations with backend side effects. Record the provider, model, revision, and distribution or image digest with the results.

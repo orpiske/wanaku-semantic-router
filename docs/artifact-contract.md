@@ -29,7 +29,7 @@ input.profile=message-to-string/v1
 expert.bean=supportExpert
 tool.name=route_support
 tool.tags=wsr-semantic-router
-question=department
+evaluation=department
 preview.main=service/preview.camel.yaml
 ```
 
@@ -49,26 +49,75 @@ A GAV identifies an implementation dependency. `expert.bean` identifies a config
 
 ## Verified Camel API
 
-The semantic artifact is `org.apache.camel:camel-semantic:4.23.0-SNAPSHOT`. The TypeSafe AI artifact is `org.apache.camel:camel-typesafe-ai:4.23.0-SNAPSHOT`. The Camel BOM manages these versions. The native YAML declaration uses `semantic.question`, `type: choice`, `expert`, `state`, `instructions`, and a criteria map. The route evaluates `ref:department` once and stores its decision. Ordinary Camel choice predicates select fixed Kamelet endpoints.
+The semantic artifact is `org.apache.camel:camel-semantic:4.23.0-SNAPSHOT`. The TypeSafe AI artifact is `org.apache.camel:camel-typesafe-ai:4.23.0-SNAPSHOT`. The Camel BOM manages these versions. Use artifacts containing [Camel PR #27494](https://github.com/apache/camel/pull/27494), merged on 2026-10-08. Its native API replaces `SemanticQuestion`/`SemanticQuestions` with `SemanticEvaluation`/`SemanticEvaluations`.
 
-[CAMEL-25382](https://issues.apache.org/jira/browse/CAMEL-25382) remained In Progress and unresolved when verified with the official Jira REST API on 2026-10-07. The tested source already supports named expert selection and static capability declarations. This implementation uses those verified APIs. It does not require the proposal's illustrative custom evaluation syntax. The [native semantic documentation](https://camel.apache.org/components/next/languages/semantic-language.html) describes the existing named-question execution model.
+Declare the routing evaluation as:
+
+```yaml
+- semantic:
+    evaluation:
+      department:
+        operation: choice
+        expert: supportExpert
+        state: "${body}"
+        parameters:
+          instructions: Select the support action that can handle this request.
+          criteria:
+            billing: Invoices, payments, and refunds.
+            technical: Bugs, outages, and technical problems.
+            no_match: Requests that neither support action can handle.
+```
+
+The expert owns parameter names, defaults, and evaluation policy. The route evaluates `ref:department` once and stores its decision. Ordinary Camel choice predicates select fixed Kamelet endpoints. Runtime dispatch remains single-label.
+
+Republish catalogs containing `semantic.question` using `semantic.evaluation`. Camel rejects the removed declaration syntax; WSR supplies no translation layer. Within an evaluation, `type: choice` and instruction-driven shorthand remain supported by Camel; the example uses explicit expert operations and parameters. Keep `contract.version=1`; rename the informational `question` metadata to `evaluation`. The retained contract version does not make old YAML compatible.
 
 The public route uses native `ai-tool:` metadata. WSR sets the exact `tool.tags` value as Camel's MCP exposure filter. Helper routes remain internal. Readiness requires successful MCP initialization and discovery of exactly the declared tool.
 
 ## Preview boundary
 
-The preview service accepts:
+`POST /api/v1/preview` accepts:
 
 ```json
 {
-  "input": "message",
-  "instructions": "Select the support action.",
-  "criteria": {"billing": "Invoices", "technical": "Technical problems", "no_match": "Neither action"},
   "expertBean": "supportExpert",
-  "message": "I have a question about an invoice."
+  "operation": "choice",
+  "parameters": {
+    "instructions": "Select the support action.",
+    "criteria": {"billing": "Invoices", "technical": "Technical problems", "no_match": "Neither action"}
+  },
+  "state": "I have a question about an invoice."
 }
 ```
 
-It creates a native `SemanticQuestion` with the same fields as the generated YAML. Its state selector is `${body}`. The isolated context has no routes. It evaluates the native expression directly. It never accepts executable YAML or calls action dispatch.
+`expertBean`, `operation`, and `state` are required. Omitted `parameters` defaults to `{}`. State accepts text, objects, or arrays according to expert capabilities. Parameters contain literal JSON, including nested values; preview does not expand placeholders. The selected expert defines the parameters and their defaults.
 
-A success returns `{"label":"billing","diagnostics":{}}`. Available native confidence or choice probabilities appear in `diagnostics`. WSR does not invent diagnostics. Invalid input returns HTTP 400. Capacity exhaustion returns HTTP 429. Provider or malformed evaluation failures return HTTP 502 with `evaluation_failed`. Evaluation timeout returns HTTP 504 with `evaluation_timeout`.
+Each request creates a native `SemanticEvaluation` in an isolated Camel context. Its state selector is `${body}`. The context has no action routes and evaluates the native expression directly. Preview accepts no executable YAML and never dispatches actions. It exposes neither expert discovery nor batch evaluation.
+
+A choice success returns:
+
+```json
+{"resultType":"choice","value":"billing","diagnostics":{}}
+```
+
+`resultType` comes from the expert contract. Values retain their native types:
+
+| Result type | JSON value |
+| --- | --- |
+| `boolean` | Boolean |
+| `choice` | String |
+| `score` | Number |
+| `classification` | Array of label strings, including an empty array |
+
+Diagnostics include only expert-supplied `probability`, `probabilities`, and `confidence`. WSR does not invent diagnostics.
+
+The old `input`/`instructions`/`criteria`/`message` request and `label` response contract no longer apply. Update Barn clients alongside deployment.
+
+| Failure | HTTP status / error |
+| --- | --- |
+| Invalid request, disabled expert, unsupported operation, invalid parameters or input | 400 / `invalid_request`, before inference |
+| Capacity exhaustion | 429 |
+| Provider failure or malformed evaluation result | 502 / `evaluation_failed` |
+| Evaluation timeout | 504 / `evaluation_timeout` |
+
+Preview retains Bearer authentication, a 64 KiB request limit, timeout cancellation, and bounded concurrency. A cancelled evaluation retains its capacity slot until its worker exits.
