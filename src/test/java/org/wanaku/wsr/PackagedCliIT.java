@@ -17,7 +17,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 /** Checks Picocli and version metadata in the distributed JAR and manifest classpath. */
 class PackagedCliIT {
-    private static final Path JAR = Path.of("target/wanaku-semantic-router-0.1.0-SNAPSHOT.jar");
+    private static final Path JAR = Path.of(System.getProperty("packagedJar"));
 
     @TempDir
     Path directory;

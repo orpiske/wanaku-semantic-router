@@ -108,7 +108,7 @@ class PackagedRuntimeIT {
             List<String> arguments = new ArrayList<>(List.of(
                     Path.of(System.getProperty("java.home"), "bin/java").toString(),
                     "-jar",
-                    "target/wanaku-semantic-router-0.1.0-SNAPSHOT.jar",
+                    System.getProperty("packagedJar"),
                     "runtime",
                     "--barn-url",
                     config.getProperty("wsr.barn.url"),
@@ -158,7 +158,7 @@ class PackagedRuntimeIT {
                 arguments = new ArrayList<>(List.of(
                         Path.of(System.getProperty("java.home"), "bin/java").toString(),
                         "-jar",
-                        "target/wanaku-semantic-router-0.1.0-SNAPSHOT.jar",
+                        System.getProperty("packagedJar"),
                         "runtime",
                         "--semantic-route",
                         SemanticRouteTest.ROUTE,
