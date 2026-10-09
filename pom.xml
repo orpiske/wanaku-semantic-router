@@ -20,7 +20,7 @@
     <langchain4j-mcp.version>1.20.1-beta30</langchain4j-mcp.version>
     <jgit.version>7.7.0.202606012155-r</jgit.version>
     <picocli.version>4.7.7</picocli.version>
-    <jackson-databind.version>2.22.0</jackson-databind.version>
+    <jackson-databind.version>2.22.3</jackson-databind.version>
     <slf4j.version>2.0.20</slf4j.version>
     <junit-jupiter.version>5.13.4</junit-jupiter.version>
     <maven-compiler-plugin.version>3.14.1</maven-compiler-plugin.version>
