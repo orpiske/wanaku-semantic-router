@@ -5,7 +5,7 @@ WSR carries the same seven GitHub Actions workflows as [Camel Integration Capabi
 | Workflow | Trigger | Purpose |
 | --- | --- | --- |
 | Build Main | Push to `main`, maintenance branches (`0.1.x`), `v*` tags, or manual dispatch | Verify Java 21 builds on Linux AMD64 and ARM64, upload test reports and packaged runtimes, smoke-test and publish containers and manifests. |
-| Multiplatform PR Builds | PRs targeting `main` or maintenance branches | Verify Linux AMD64, Linux ARM64, and macOS; Windows is experimental. Upload test reports; container checks run on Linux. |
+| Multiplatform PR Builds | PRs targeting `main` or maintenance branches | Verify Linux AMD64, Linux ARM64, and macOS. Upload test reports; container checks run on Linux. |
 | Dependency Review | PRs | Review dependency changes for known vulnerabilities. |
 | Markdown Lint | PRs changing Markdown or lint configuration | Check documentation with markdownlint-cli2. |
 | early-access | Manual dispatch | Build and smoke-test both Linux architectures, publish containers and manifests, and publish a signed early-access runtime ZIP through JReleaser. |
