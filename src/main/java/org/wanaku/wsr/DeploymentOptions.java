@@ -21,6 +21,8 @@ final class DeploymentOptions {
             Map.entry("WSR_MCP_PORT", "wsr.port"),
             Map.entry("WSR_NAME", "wsr.forward.name"),
             Map.entry("WSR_NAMESPACE", "wsr.forward.namespace"),
+            Map.entry("WSR_AUDIT_ENABLED", "wsr.audit.enabled"),
+            Map.entry("WSR_AUDIT_URL", "wsr.audit.url"),
             Map.entry("WSR_DATA_DIR", "wsr.work-directory"),
             Map.entry("WSR_BARN_TOKEN_ENV", "wsr.barn.token-env"),
             Map.entry("WSR_WANAKU_TOKEN_ENV", "wsr.wanaku.token-env"),

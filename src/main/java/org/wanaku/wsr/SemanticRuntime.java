@@ -4,11 +4,16 @@ import java.net.URI;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
+import org.apache.camel.console.DevConsole;
 import org.apache.camel.main.Main;
+import org.apache.camel.semantic.SemanticAuditConsole;
 
 /** Startup ordering is explicit: catalog -> dependencies -> Camel/MCP -> discovery -> forward. */
 public final class SemanticRuntime implements AutoCloseable {
     private final RuntimeSettings settings;
+    private final AuditSettings auditSettings;
+    private final String instance = java.util.UUID.randomUUID().toString();
+    private WanakuAuditSink auditSink;
     // Blocking startup and cleanup must not pin Java 21 virtual-thread carriers on a monitor.
     private final ReentrantLock lifecycle = new ReentrantLock();
     private final AtomicBoolean stopping = new AtomicBoolean();
@@ -23,6 +28,7 @@ public final class SemanticRuntime implements AutoCloseable {
 
     public SemanticRuntime(RuntimeSettings settings) {
         this.settings = settings;
+        this.auditSettings = AuditSettings.from(settings);
     }
 
     public void start() throws Exception {
@@ -77,7 +83,8 @@ public final class SemanticRuntime implements AutoCloseable {
                 settings.registration(),
                 catalog.reference(),
                 settings.runtime().httpTimeout(),
-                catalog.manifest().getProperty("camel.build"));
+                catalog.manifest().getProperty("camel.build"),
+                instance);
         registration.register();
         checkCancellation();
     }
@@ -96,6 +103,14 @@ public final class SemanticRuntime implements AutoCloseable {
     }
 
     private void configureCamel() throws Exception {
+        var source = Map.of(
+                "instance_id", instance,
+                "forward_name", settings.registration().forwardName(),
+                "namespace", settings.registration().namespace(),
+                "catalog_revision", settings.catalog().reference().revision(),
+                "catalog_digest", settings.catalog().reference().digest());
+        auditSink = new WanakuAuditSink(auditSettings, source);
+        main.bind("wanakuAudit", auditSink);
         var configuration = CatalogLoader.properties(
                 CatalogLoader.contained(catalog.root(), catalog.manifest().getProperty("configuration")));
         for (String key : configuration.stringPropertyNames()) {
@@ -148,10 +163,34 @@ public final class SemanticRuntime implements AutoCloseable {
             values.put("catalogCamelBuild", catalog.manifest().getProperty("camel.build"));
         }
         values.put("forwardName", settings.registration().forwardName());
+        values.put("audit", auditStatus());
         if (failure != null) {
             values.put("failure", failure);
         }
         return values;
+    }
+
+    private Map<String, Object> auditStatus() {
+        Map<String, Object> status = new java.util.LinkedHashMap<>();
+        status.put("enabled", auditSettings.enabled());
+        if (auditSink != null) {
+            status.putAll(auditSink.status());
+        }
+        if (main != null
+                && main.getCamelContext() != null
+                && main.getCamelContext().isStarted()) {
+            try {
+                SemanticAuditConsole console = new SemanticAuditConsole();
+                console.setCamelContext(main.getCamelContext());
+                var response = (Map<?, ?>) console.call(DevConsole.MediaType.JSON, Map.of("limit", 1));
+                if (response.get("audit") instanceof Map<?, ?> capture) {
+                    status.put("capture", capture);
+                }
+            } catch (RuntimeException e) {
+                status.put("captureError", "audit_status_unavailable");
+            }
+        }
+        return status;
     }
 
     private void closeResources() throws Exception {
