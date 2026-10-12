@@ -52,6 +52,8 @@ Use `--init-from` to initialize deployment files from Git before service startup
 
 ## Runtime behavior
 
+Runtime catalogs can enable Camel's semantic audit capture and select the `wanakuAudit` sink. WSR forwards those records to Wanaku with bounded retries and preserves typed results and evidence IDs. Forwarding defaults on; capture remains catalog-controlled. See [audit forwarding](docs/deployment.md#semantic-audit-forwarding) for receiver setup and delivery limits.
+
 One process loads one selected service from one fixed catalog revision. It downloads the Barn `DataStore` ZIP through the existing catalog endpoint. It checks the SHA-256 digest, revision, Camel version, main file, and auxiliary resources. It loads action settings and named expert beans before Camel starts.
 
 WSR uses the maintained LangChain4j MCP client for initialization and tool discovery before it registers the Wanaku forward. A startup failure stops Camel and removes extracted files. A registered forward contains the active revision and digest as labels. It also records the catalog's optional Camel build metadata. This metadata describes catalog publication, not the runtime binaries. Shutdown removes the forward only when its instance label still belongs to that process. Updates require restart or replacement with explicit publication pins.

@@ -167,6 +167,7 @@ final class RuntimeCommand implements Callable<Integer> {
         try {
             deployment = deployment();
             settings = RuntimeSettings.from(deployment);
+            AuditSettings.from(settings);
             CliConfiguration.experts(deployment);
             statusPort = CliConfiguration.port(deployment, "wsr.status.port", 8091);
         } catch (IllegalArgumentException e) {
