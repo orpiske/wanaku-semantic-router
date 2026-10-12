@@ -16,17 +16,19 @@ final class ForwardRegistration implements AutoCloseable {
     private final Duration httpTimeout;
     private final String catalogCamelBuild;
     private boolean registered;
-    private final String instance = java.util.UUID.randomUUID().toString();
+    private final String instance;
 
     ForwardRegistration(
             RuntimeSettings.RegistrationSettings registration,
             RuntimeSettings.CatalogReference catalog,
             Duration httpTimeout,
-            String catalogCamelBuild) {
+            String catalogCamelBuild,
+            String instance) {
         this.registration = registration;
         this.catalog = catalog;
         this.httpTimeout = httpTimeout;
         this.catalogCamelBuild = catalogCamelBuild;
+        this.instance = instance;
     }
 
     void register() throws Exception {
