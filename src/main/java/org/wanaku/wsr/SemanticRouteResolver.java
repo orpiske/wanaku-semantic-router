@@ -21,6 +21,14 @@ final class SemanticRouteResolver {
 
     private SemanticRouteResolver() {}
 
+    /** Only WSR-owned text and a numeric status may be exposed by the CLI. */
+    static final class LookupFailure extends IOException {
+        private LookupFailure(int status) {
+            super("Barn semantic route lookup failed (HTTP " + status + ")"
+                    + (status == 404 ? "; check the saved route name and publication in Barn" : ""));
+        }
+    }
+
     static void resolve(Properties deployment, Map<String, String> environment) throws Exception {
         String name = RuntimeSettings.required(deployment, "wsr.semantic-route");
         if (name.length() > 256 || name.chars().anyMatch(Character::isISOControl)) {
@@ -48,7 +56,7 @@ final class SemanticRouteResolver {
                         .build(),
                 MAX_RESPONSE_BYTES);
         if (response.statusCode() != 200) {
-            throw new IOException("Barn semantic route lookup failed with status " + response.statusCode());
+            throw new LookupFailure(response.statusCode());
         }
         JsonNode selection = selection(response.body());
         if (!name.equals(text(selection, "name"))) {
