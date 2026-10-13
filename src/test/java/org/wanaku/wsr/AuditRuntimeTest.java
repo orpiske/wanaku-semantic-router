@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Base64;
@@ -31,6 +32,11 @@ class AuditRuntimeTest {
     @Test
     void capturesWithoutCatalogAuditAndKeepsRoutingWhenReceiverFails() throws Exception {
         exercise("", null);
+    }
+
+    @Test
+    void capturesLocalFileAuditWithSnapshotIdentityAndKeepsRoutingWhenReceiverFails() throws Exception {
+        exercise("", null, true);
     }
 
     @Test
@@ -68,6 +74,10 @@ class AuditRuntimeTest {
     }
 
     private void exercise(String catalogAudit, Boolean enabled) throws Exception {
+        exercise(catalogAudit, enabled, false);
+    }
+
+    private void exercise(String catalogAudit, Boolean enabled, boolean localFiles) throws Exception {
         Map<String, byte[]> entries = RuntimeTest.reference();
         String yaml = new String(entries.get("support/support.camel.yaml"), StandardCharsets.UTF_8);
         yaml = yaml.replace(
@@ -137,6 +147,21 @@ class AuditRuntimeTest {
             var fixture = new RuntimeTest();
             fixture.directory = directory;
             var deployment = fixture.settings(archive, port, port, mcp, provider.port());
+            if (localFiles) {
+                Path sources = directory.resolve("source");
+                for (var entry : entries.entrySet()) {
+                    if (!entry.getKey().equals("index.properties")) {
+                        Path file = sources.resolve(entry.getKey());
+                        Files.createDirectories(file.getParent());
+                        Files.write(file, entry.getValue());
+                    }
+                }
+                deployment.keySet().removeIf(key -> key.toString().startsWith("wsr.catalog."));
+                deployment.remove("wsr.barn.url");
+                deployment.setProperty(
+                        "wsr.routes-ref",
+                        sources.resolve("support/support.camel.yaml").toUri().toString());
+            }
             if (enabled != null) {
                 deployment.setProperty("wsr.audit.enabled", enabled.toString());
             }
@@ -210,11 +235,14 @@ class AuditRuntimeTest {
                                         .asText(),
                                 evaluation.path("source").path("instance_id").asText());
                         assertEquals(
-                                "1",
+                                localFiles ? "local" : "1",
                                 evaluation
                                         .path("source")
                                         .path("catalog_revision")
                                         .asText());
+                        assertEquals(
+                                runtime.status().get("digest"),
+                                evaluation.path("source").path("catalog_digest").asText());
                         assertFalse(evaluation.path("record").has("input"));
                         receiverStatus.set(503);
                         assertTrue(client.executeTool(request).resultText().contains("Billing demo response"));
