@@ -2,7 +2,7 @@ package org.wanaku.wsr;
 
 import java.net.URI;
 
-/** Deployment-owned forwarding settings; catalogs select which audit records to capture. */
+/** Deployment-owned semantic audit capture and forwarding settings. */
 public record AuditSettings(boolean enabled, URI url) {
     public static AuditSettings from(RuntimeSettings settings) {
         String enabled = settings.deployment().getProperty("wsr.audit.enabled", "true");

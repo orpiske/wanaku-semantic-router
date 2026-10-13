@@ -88,6 +88,21 @@ final class RuntimeCommand implements Callable<Integer> {
         named.setProperty("wsr.forward.namespace", value);
     }
 
+    @CommandLine.Option(
+            names = "--audit-enabled",
+            arity = "0..1",
+            fallbackValue = "true",
+            paramLabel = "true|false",
+            description = "Capture semantic audit events and send them to Wanaku. Default: true.")
+    private void auditEnabled(boolean value) {
+        named.setProperty("wsr.audit.enabled", Boolean.toString(value));
+    }
+
+    @CommandLine.Option(names = "--audit-url", description = "Complete Wanaku semantic audit ingestion URL.")
+    private void auditUrl(String value) {
+        named.setProperty("wsr.audit.url", value);
+    }
+
     @CommandLine.Option(names = "--mcp-address", description = "Advertised MCP endpoint URL.")
     private void mcpAddress(String value) {
         named.setProperty("wsr.mcp.address", value);
