@@ -131,6 +131,34 @@ class DeploymentOptionsTest {
     }
 
     @Test
+    void auditFlagsControlCaptureAndDestination() throws Exception {
+        assertEquals("true", deployment("runtime", "--audit-enabled").getProperty("wsr.audit.enabled"));
+        assertEquals("false", deployment("runtime", "--audit-enabled=false").getProperty("wsr.audit.enabled"));
+        assertEquals(
+                "http://audit.example/api/v1/audit/semantic",
+                deployment("runtime", "--audit-url", "http://audit.example/api/v1/audit/semantic")
+                        .getProperty("wsr.audit.url"));
+    }
+
+    @Test
+    void bareAuditFlagPreservesPositionalConfigurationFile() throws Exception {
+        Path file = directory.resolve("audit-positional.properties");
+        Files.writeString(file, "wsr.audit.enabled=false\nwsr.audit.url=http://file.example/audit\n");
+        var configured = deployment("runtime", file.toString());
+        assertEquals("false", configured.getProperty("wsr.audit.enabled"));
+        assertEquals("http://file.example/audit", configured.getProperty("wsr.audit.url"));
+        var settings = deployment("runtime", "--audit-enabled", file.toString());
+        assertEquals("true", settings.getProperty("wsr.audit.enabled"));
+        assertEquals("http://file.example/audit", settings.getProperty("wsr.audit.url"));
+    }
+
+    @Test
+    void invalidAuditFlagReturnsUsageError() {
+        var result = ApplicationTest.execute("runtime", "--audit-enabled=yes");
+        assertEquals(2, result.code());
+    }
+
+    @Test
     void previewOptionsMapToDeploymentSettingsAndPreservePropertyEqualsSigns() throws Exception {
         var settings = deployment(
                 "preview",
@@ -271,21 +299,45 @@ class DeploymentOptionsTest {
     @Test
     void environmentOverridesFilesAndGenericAndNamedOptionsOverrideEnvironmentInAnyOrder() throws Exception {
         Path file = directory.resolve("env-runtime.properties");
-        Files.writeString(file, "wsr.port=8100\nwsr.barn.url=http://file.example:8180\n");
+        Files.writeString(
+                file,
+                """
+                wsr.port=8100
+                wsr.barn.url=http://file.example:8180
+                wsr.audit.enabled=false
+                wsr.audit.url=http://file.example/audit
+                """);
         Map<String, String> environment = Map.of(
                 "WSR_MCP_PORT", "8101",
                 "WSR_BARN_URL", "http://env.example:8180",
                 "WSR_REGISTRATION_URL", "http://env.example:8080",
                 "WSR_BARN_TOKEN_ENV", "BARN_TOKEN",
-                "WSR_WANAKU_TOKEN_ENV", "WANAKU_TOKEN");
+                "WSR_WANAKU_TOKEN_ENV", "WANAKU_TOKEN",
+                "WSR_AUDIT_ENABLED", "true",
+                "WSR_AUDIT_URL", "http://env.example/audit");
         for (int level = 0; level < 3; level++) {
             for (boolean namedFirst : new boolean[] {true, false}) {
                 List<String> arguments = new ArrayList<>(List.of("runtime", "--config", file.toString()));
                 List<String> generic = level >= 1
-                        ? List.of("-p", "wsr.port=8102", "-p", "wsr.barn.url=http://property.example:8180")
+                        ? List.of(
+                                "-p",
+                                "wsr.port=8102",
+                                "-p",
+                                "wsr.barn.url=http://property.example:8180",
+                                "-p",
+                                "wsr.audit.enabled=false",
+                                "-p",
+                                "wsr.audit.url=http://property.example/audit")
                         : List.of();
                 List<String> named = level >= 2
-                        ? List.of("--mcp-port", "8103", "--barn-url", "http://named.example:8180")
+                        ? List.of(
+                                "--mcp-port",
+                                "8103",
+                                "--barn-url",
+                                "http://named.example:8180",
+                                "--audit-enabled",
+                                "--audit-url",
+                                "http://named.example/audit")
                         : List.of();
                 arguments.addAll(namedFirst ? named : generic);
                 arguments.addAll(namedFirst ? generic : named);
@@ -297,6 +349,10 @@ class DeploymentOptionsTest {
                 assertEquals(
                         "http://" + List.of("env", "property", "named").get(level) + ".example:8180",
                         settings.getProperty("wsr.barn.url"));
+                assertEquals(Boolean.toString(level != 1), settings.getProperty("wsr.audit.enabled"));
+                assertEquals(
+                        "http://" + List.of("env", "property", "named").get(level) + ".example/audit",
+                        settings.getProperty("wsr.audit.url"));
                 assertEquals("http://env.example:8080", settings.getProperty("wsr.wanaku.url"));
                 assertEquals("BARN_TOKEN", settings.getProperty("wsr.barn.token-env"));
                 assertEquals("WANAKU_TOKEN", settings.getProperty("wsr.wanaku.token-env"));
