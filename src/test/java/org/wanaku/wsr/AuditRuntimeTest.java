@@ -29,47 +29,70 @@ class AuditRuntimeTest {
     Path directory;
 
     @Test
-    void forwardsCatalogAuditRecordsAndKeepsRoutingWhenReceiverFails() throws Exception {
-        exercise(true, true);
+    void capturesWithoutCatalogAuditAndKeepsRoutingWhenReceiverFails() throws Exception {
+        exercise("", null);
     }
 
     @Test
-    void requiresCatalogCaptureAndHonorsForwardingDisable() throws Exception {
-        exercise(false, true);
-        exercise(true, false);
+    void disabledRuntimeOverridesEnabledCatalogCapture() throws Exception {
+        exercise(
+                """
+                audit:
+                  enabled: true
+                  experts:
+                    supportExpert:
+                      enabled: true
+                  sinks: [memory, wanakuAudit]
+                  reader: memory
+                """,
+                false);
     }
 
-    private void exercise(boolean capture, boolean forwarding) throws Exception {
+    @Test
+    void enabledRuntimeOverridesCatalogExpertInputAndSinkSettings() throws Exception {
+        exercise(
+                """
+                audit:
+                  enabled: false
+                  experts:
+                    supportExpert:
+                      enabled: false
+                      input:
+                        enabled: true
+                  sinks: [memory, catalogOnlySink]
+                  reader: memory
+                  capacity: 1
+                  queueCapacity: 1
+                """,
+                true);
+    }
+
+    private void exercise(String catalogAudit, Boolean enabled) throws Exception {
         Map<String, byte[]> entries = RuntimeTest.reference();
-        if (capture) {
-            String yaml = new String(entries.get("support/support.camel.yaml"), StandardCharsets.UTF_8);
-            yaml = yaml.replace(
-                    "- semantic:\n",
-                    """
-                    - beans:
-                      - name: recordContinuation
-                        type: org.apache.camel.semantic.SemanticAuditDecision
-                        properties:
-                          fields:
-                            action: continue
-                            operation: tools/call
-                            target: route_support
-                            reasonCode: classified
-                    - semantic:
-                        audit:
-                          enabled: true
-                          sinks: [memory, wanakuAudit]
-                          reader: memory
-                    """);
-            yaml = yaml.replace(
-                    "        - to: direct:classify-support\n",
-                    """
-                            - to: direct:classify-support
-                            - process:
-                                ref: recordContinuation
-                    """);
-            entries.put("support/support.camel.yaml", yaml.getBytes(StandardCharsets.UTF_8));
-        }
+        String yaml = new String(entries.get("support/support.camel.yaml"), StandardCharsets.UTF_8);
+        yaml = yaml.replace(
+                "- semantic:\n",
+                """
+                - beans:
+                  - name: recordContinuation
+                    type: org.apache.camel.semantic.SemanticAuditDecision
+                    properties:
+                      fields:
+                        action: continue
+                        operation: tools/call
+                        target: route_support
+                        reasonCode: classified
+                - semantic:
+                """
+                        + catalogAudit.indent(4));
+        yaml = yaml.replace(
+                "        - to: direct:classify-support\n",
+                """
+                        - to: direct:classify-support
+                        - process:
+                            ref: recordContinuation
+                """);
+        entries.put("support/support.camel.yaml", yaml.getBytes(StandardCharsets.UTF_8));
         byte[] archive = RuntimeTest.archive(entries);
         var records = new CopyOnWriteArrayList<JsonNode>();
         var receiverStatus = new AtomicInteger(200);
@@ -114,9 +137,19 @@ class AuditRuntimeTest {
             var fixture = new RuntimeTest();
             fixture.directory = directory;
             var deployment = fixture.settings(archive, port, port, mcp, provider.port());
-            deployment.setProperty("wsr.audit.enabled", Boolean.toString(forwarding));
+            if (enabled != null) {
+                deployment.setProperty("wsr.audit.enabled", enabled.toString());
+            }
             try (var runtime = new SemanticRuntime(RuntimeSettings.from(deployment))) {
                 runtime.start();
+                var capture = (Map<?, ?>) ((Map<?, ?>) runtime.status().get("audit")).get("capture");
+                boolean auditing = !Boolean.FALSE.equals(enabled);
+                assertEquals(auditing, capture.get("enabled"));
+                assertEquals(auditing, capture.get("decisionsEnabled"));
+                assertEquals(Map.of(), capture.get("experts"));
+                assertEquals(Map.of(), capture.get("inputs"));
+                assertEquals(1000, capture.get("capacity"));
+                assertEquals(auditing ? List.of("memory", "wanakuAudit") : List.of("memory"), capture.get("sinks"));
                 var transport = new StreamableHttpMcpTransport.Builder()
                         .url("http://127.0.0.1:" + mcp + "/mcp")
                         .customHeaders(Map.of("MCP-Protocol-Version", McpReadiness.PROTOCOL_VERSION))
@@ -137,7 +170,7 @@ class AuditRuntimeTest {
                             .arguments("{\"message\":\"billing\"}")
                             .build();
                     assertTrue(client.executeTool(request).resultText().contains("Billing demo response"));
-                    if (capture && forwarding) {
+                    if (auditing) {
                         await(runtime, "delivered", 2);
                         assertEquals(2, records.size());
                         var evaluation = records.stream()
@@ -192,7 +225,7 @@ class AuditRuntimeTest {
                     }
                 }
             }
-            if (!capture || !forwarding) {
+            if (Boolean.FALSE.equals(enabled)) {
                 assertEquals(List.of(), records);
             }
         } finally {

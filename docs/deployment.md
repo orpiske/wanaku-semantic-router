@@ -55,7 +55,7 @@ Use environment settings for Kubernetes and OpenShift. CLI options override thes
 | `WSR_STATUS_BIND` | Status listener address |
 | `WSR_STATUS_PORT` | Status listener port |
 | `WSR_HTTP_TIMEOUT_MS` | Complete HTTP operation timeout |
-| `WSR_AUDIT_ENABLED` | Forward runtime audit records; default `true` |
+| `WSR_AUDIT_ENABLED` | Capture and forward runtime audit records; default `true` |
 | `WSR_AUDIT_URL` | Optional complete audit ingestion URL |
 | `WSR_BARN_TOKEN_ENV` | Name of the Barn token environment variable |
 | `WSR_WANAKU_TOKEN_ENV` | Name of the Wanaku token environment variable |
@@ -64,31 +64,24 @@ Use `WSR_MCP_ADDRESS` with a listener that binds to a non-loopback address. WSR 
 
 ### Semantic audit forwarding
 
-WSR binds the Camel sink `wanakuAudit` in runtime contexts. The forwarding setting defaults to `true`. The default endpoint is the Wanaku origin followed by `/api/v1/audit/semantic`. Set `wsr.audit.url` or `WSR_AUDIT_URL` to use another complete URL. Set `wsr.audit.enabled=false` or `WSR_AUDIT_ENABLED=false` to stop forwarding. Generic `--property` settings override environment settings.
+WSR controls Camel semantic audit capture and forwarding through `--audit-enabled`, `wsr.audit.enabled`, or `WSR_AUDIT_ENABLED`. It defaults to `true`. Catalog changes and republication are not required. Runtime settings override catalog audit settings, including expert filters, input capture, and sink selection. Preview contexts have no Wanaku sink.
 
-Catalogs own Camel's capture configuration. Add the following audit block to one semantic declaration and republish the catalog:
-
-```yaml
-- semantic:
-    audit:
-      enabled: true
-      sinks: [memory, wanakuAudit]
-      reader: memory
-      capacity: 1000
-      queueCapacity: 1000
-    evaluation:
-      department:
-        operation: choice
-        expert: supportExpert
-        state: "${body}"
-        parameters:
-          instructions: Select the support department.
-          criteria:
-            billing: Invoices and payments.
-            technical: Bugs and outages.
+```sh
+java -jar target/wanaku-semantic-router-0.3.0-SNAPSHOT.jar runtime \
+  --semantic-route support-router --audit-enabled
 ```
 
-Existing catalogs without an audit block continue to run. They do not capture records. Camel supports per-expert capture overrides in the audit block. WSR does not replace these settings. Preview contexts have no Wanaku sink.
+Use `--audit-enabled=false` to disable capture and forwarding. The default endpoint is the Wanaku origin followed by `/api/v1/audit/semantic`. Set `--audit-url`, `wsr.audit.url`, or `WSR_AUDIT_URL` to use another complete URL. Explicit command options override generic properties, which override environment settings.
+
+WSR selects the `memory` and `wanakuAudit` sinks with a memory capacity and dispatcher queue capacity of 1000 records each. It captures all experts without capturing input content.
+
+After invoking a tool that performs a semantic evaluation, check delivery:
+
+```sh
+curl -s http://127.0.0.1:8091/api/v1/status | jq '.audit'
+```
+
+When enabled, `capture.enabled` is `true` and `capture.sinks` includes `wanakuAudit`. `received` counts records handed to WSR; `delivered` counts acknowledged deliveries. `failed` and `lastFailure` report delivery failures.
 
 Enable the matching Wanaku receiver with `WANAKU_AUDIT_INGESTION_ENABLED=true`. The initial ingestion endpoint has no credential support. It uses Wanaku's existing management listener. Producer metadata is a claim from WSR, not verified caller identity. Audit forwarding does not reuse management tokens or authorize a tool call.
 
