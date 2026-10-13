@@ -12,6 +12,8 @@ import picocli.CommandLine.Model.CommandSpec;
 final class DeploymentOptions {
     private static final Map<String, String> ENVIRONMENT_SETTINGS = Map.ofEntries(
             Map.entry("WSR_SEMANTIC_ROUTE", "wsr.semantic-route"),
+            Map.entry("WSR_ROUTES_REF", "wsr.routes-ref"),
+            Map.entry("WSR_DEPENDENCIES", "wsr.dependencies"),
             Map.entry("WSR_BARN_URL", "wsr.barn.url"),
             Map.entry("WSR_REGISTRATION_URL", "wsr.wanaku.url"),
             Map.entry("WSR_MCP_ADDRESS", "wsr.mcp.address"),

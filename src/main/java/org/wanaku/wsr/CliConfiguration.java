@@ -38,7 +38,8 @@ final class CliConfiguration {
 
     static CommandLine.ParameterException invalid(CommandSpec spec, IllegalArgumentException error) {
         String message = error.getMessage();
-        String detail = message != null && message.startsWith("Missing setting: ")
+        String detail = error instanceof LocalArtifacts.InvalidInput
+                        || (message != null && message.startsWith("Missing setting: "))
                 ? message
                 : "Check settings and credential environment variables.";
         return new CommandLine.ParameterException(spec.commandLine(), "Invalid deployment configuration. " + detail);

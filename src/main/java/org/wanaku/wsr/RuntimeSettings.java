@@ -81,7 +81,12 @@ public record RuntimeSettings(
     }
 
     public static RuntimeSettings from(Properties p) {
-        return new RuntimeSettings(CatalogSettings.from(p), RegistrationSettings.from(p), RuntimeOptions.from(p), p);
+        LocalArtifacts.validateSelection(p);
+        return new RuntimeSettings(
+                p.containsKey("wsr.routes-ref") ? null : CatalogSettings.from(p),
+                RegistrationSettings.from(p),
+                RuntimeOptions.from(p),
+                p);
     }
 
     @Override
