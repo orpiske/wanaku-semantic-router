@@ -7,7 +7,7 @@ import picocli.CommandLine.Model.CommandSpec;
 /** CLI entry point follows Camel Integration Capability's annotated Callable pattern. */
 @CommandLine.Command(
         name = "wsr",
-        description = "Run a pinned Barn catalog or an isolated classification preview service.",
+        description = "Run local files, a pinned Barn catalog, or an isolated classification preview service.",
         mixinStandardHelpOptions = true,
         versionProvider = Application.Version.class,
         subcommands = {RuntimeCommand.class, PreviewCommand.class})

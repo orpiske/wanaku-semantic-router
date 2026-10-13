@@ -40,7 +40,7 @@ java -jar target/wanaku-semantic-router-0.3.0-SNAPSHOT.jar runtime --help
 java -jar target/wanaku-semantic-router-0.3.0-SNAPSHOT.jar preview --help
 ```
 
-Local route startup defaults to Barn at `http://localhost:8180` and Wanaku at `http://localhost:8080`. WSR resolves the current published catalog once. It verifies the fixed revision and digest before startup. It keeps that publication until restart. Kubernetes can set `WSR_SEMANTIC_ROUTE`, `WSR_BARN_URL`, `WSR_REGISTRATION_URL`, and `WSR_MCP_ADDRESS`.
+Published route startup defaults to Barn at `http://localhost:8180` and Wanaku at `http://localhost:8080`. WSR resolves the current published catalog once. It verifies the fixed revision and digest before startup. It keeps that publication until restart. Kubernetes can set `WSR_SEMANTIC_ROUTE`, `WSR_BARN_URL`, `WSR_REGISTRATION_URL`, and `WSR_MCP_ADDRESS`.
 
 Use `--expert NAME=CLASS` to configure a custom expert bean. Use `--property KEY=VALUE` (`-p`) for provider and Camel component settings. Repeat these options for additional settings. Use environment references for credentials. Settings apply in this order: file, environment, generic properties, and named options. A later source overrides an earlier source.
 
@@ -48,7 +48,9 @@ Each command accepts `--help` (`-h`) and `--version` (`-V`). These options do no
 
 The CLI returns `0` for help and version output. It returns `2` for invalid arguments or invalid deployment settings. It returns `1` for startup or execution failures. Configuration validation errors omit supplied values. Operational errors report the failure type and runtime status without provider error messages. Stop a running service with `SIGTERM` or `Ctrl+C`. The shutdown hook closes the service and removes the runtime forward when that process owns it.
 
-Use `--init-from` to initialize deployment files from Git before service startup. Use `--data-dir` to select runtime catalog storage and the initialization directory. WSR uses the SDK initializer and retry policy. See [initialization](docs/initialization.md) for source, cache, and timeout behavior. Runtime routes continue to come from the selected Barn publication.
+Use `--init-from` to initialize deployment files from Git before service startup. Use `--data-dir` to select runtime catalog storage and the initialization directory. WSR uses the SDK initializer and retry policy. See [initialization](docs/initialization.md) for source, cache, and timeout behavior. Runtime routes come from the selected Barn publication or local resources.
+
+For startup without Barn, use `runtime --routes-ref file:///path/to/router.camel.yaml --dependencies file:///path/to/dependencies.txt` with an adjacent semantic manifest and Wanaku deployment settings. See the [complete local launch example](docs/deployment.md#local-files-without-barn).
 
 ## Runtime behavior
 

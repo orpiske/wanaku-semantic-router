@@ -13,7 +13,7 @@ import picocli.CommandLine.Model.CommandSpec;
 
 @CommandLine.Command(
         name = "runtime",
-        description = "Fetch a fixed Barn catalog, start Camel MCP, then register its Wanaku forward.",
+        description = "Load local files or a fixed Barn catalog, start Camel MCP, then register its Wanaku forward.",
         mixinStandardHelpOptions = true,
         versionProvider = Application.Version.class)
 final class RuntimeCommand implements Callable<Integer> {
@@ -33,6 +33,20 @@ final class RuntimeCommand implements Callable<Integer> {
             description = "Resolve one published semantic route by its exact Barn name.")
     private void semanticRoute(String value) {
         named.setProperty("wsr.semantic-route", value);
+    }
+
+    @CommandLine.Option(
+            names = "--routes-ref",
+            description = "Local route file path or file URI; requires adjacent semantic-router.properties.")
+    private void routesReference(String value) {
+        named.setProperty("wsr.routes-ref", value);
+    }
+
+    @CommandLine.Option(
+            names = "--dependencies",
+            description = "Local dependency file path or file URI (defaults to manifest dependencies).")
+    private void dependenciesReference(String value) {
+        named.setProperty("wsr.dependencies", value);
     }
 
     @CommandLine.Option(names = "--barn-url", description = "Barn management URL.")
@@ -150,9 +164,10 @@ final class RuntimeCommand implements Callable<Integer> {
             overrides.setProperty("wsr.work-directory", initialization.dataDirectory.toString());
         }
         Properties deployment = options.load(initialization, spec, overrides, environment);
-        if (deployment.containsKey("wsr.semantic-route")) {
+        LocalArtifacts.validateSelection(deployment);
+        if (!deployment.containsKey("wsr.routes-ref") && deployment.containsKey("wsr.semantic-route")) {
             SemanticRouteResolver.resolve(deployment, environment);
-        } else {
+        } else if (!deployment.containsKey("wsr.routes-ref")) {
             deployment.putIfAbsent("wsr.catalog.service", "service");
         }
         deployment.putIfAbsent("wsr.forward.namespace", "default");
@@ -202,6 +217,8 @@ final class RuntimeCommand implements Callable<Integer> {
     private void startRuntime(SemanticRuntime runtime) throws Exception {
         try {
             runtime.start();
+        } catch (LocalArtifacts.InvalidInput e) {
+            throw CliConfiguration.invalid(spec, e);
         } catch (Exception e) {
             spec.commandLine().getErr().println(new ObjectMapper().writeValueAsString(runtime.status()));
             throw e;

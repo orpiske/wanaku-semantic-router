@@ -1,6 +1,6 @@
 # Initialization
 
-WSR follows the Camel Integration Capability startup sequence. It initializes deployment resources before it reads deployment settings. It then loads the selected Barn publication, starts Camel, checks MCP readiness, and registers the forward.
+WSR follows the Camel Integration Capability startup sequence. It initializes deployment resources before it reads deployment settings. It then loads the selected Barn publication or snapshots local files selected by `--routes-ref`, starts Camel, checks MCP readiness, and registers the forward.
 
 ## Git deployment files
 
