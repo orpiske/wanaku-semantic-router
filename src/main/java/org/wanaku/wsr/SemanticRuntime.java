@@ -55,7 +55,9 @@ public final class SemanticRuntime implements AutoCloseable {
 
     private void startResources() throws Exception {
         checkCancellation();
-        catalog = new CatalogLoader().fetch(settings.catalog(), settings.runtime());
+        catalog = settings.catalog() == null
+                ? LocalArtifacts.load(settings.deployment(), settings.runtime())
+                : new CatalogLoader().fetch(settings.catalog(), settings.runtime());
         checkCancellation();
         dependencies = Dependencies.load(catalog.dependencies(), catalog.root().resolve("resolved-dependencies"));
         checkCancellation();
@@ -73,7 +75,7 @@ public final class SemanticRuntime implements AutoCloseable {
         checkCancellation();
         registration = new ForwardRegistration(
                 settings.registration(),
-                settings.catalog().reference(),
+                catalog.reference(),
                 settings.runtime().httpTimeout(),
                 catalog.manifest().getProperty("camel.build"));
         registration.register();
@@ -129,8 +131,14 @@ public final class SemanticRuntime implements AutoCloseable {
     public Map<String, Object> status() {
         var values = new java.util.LinkedHashMap<String, Object>();
         values.put("state", state);
-        values.put("revision", settings.catalog().reference().revision());
-        values.put("digest", settings.catalog().reference().digest());
+        values.put("source", settings.catalog() == null ? "local-files" : "barn");
+        RuntimeSettings.CatalogReference reference = catalog == null
+                ? (settings.catalog() == null ? null : settings.catalog().reference())
+                : catalog.reference();
+        if (reference != null) {
+            values.put("revision", reference.revision());
+            values.put("digest", reference.digest());
+        }
         values.put(
                 "camelVersion",
                 main == null || main.getCamelContext() == null

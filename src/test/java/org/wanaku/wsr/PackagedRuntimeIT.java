@@ -39,9 +39,11 @@ class PackagedRuntimeIT {
     Path directory;
 
     @ParameterizedTest(name = "packaged runtime publication discovery = {0}")
-    @ValueSource(booleans = {false, true})
+    @ValueSource(strings = {"catalog", "discovery", "local"})
     @Timeout(45)
-    void packagedRuntimeLoadsCatalogClassifiesRegistersAndDeregisters(boolean discovery) throws Exception {
+    void packagedRuntimeLoadsCatalogClassifiesRegistersAndDeregisters(String mode) throws Exception {
+        boolean discovery = mode.equals("discovery");
+        boolean local = mode.equals("local");
         byte[] archive = RuntimeTest.archive(RuntimeTest.reference());
         HttpServer control = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 16);
         var executor = Executors.newVirtualThreadPerTaskExecutor();
@@ -165,6 +167,9 @@ class PackagedRuntimeIT {
                         "-p",
                         "camel.component.typesafe-ai.base-url=http://127.0.0.1:" + provider.port()));
             }
+            if (local) {
+                localArguments(arguments);
+            }
             Path log = directory.resolve("runtime.log");
             var builder =
                     new ProcessBuilder(arguments).redirectErrorStream(true).redirectOutput(log.toFile());
@@ -209,51 +214,16 @@ class PackagedRuntimeIT {
                 Thread.sleep(50);
             }
             assertEquals("ready", state, Files.readString(log));
-            assertEquals("name=semantic-support-spike", downloadQuery.get());
-            assertEquals("Bearer catalog-fixture-token", downloadAuth.get());
+            assertEquals(local ? null : "name=semantic-support-spike", downloadQuery.get());
+            assertEquals(local ? null : "Bearer catalog-fixture-token", downloadAuth.get());
             assertEquals(1, registered.get());
-            assertEquals(
-                    discovery ? "route_support" : "reference",
-                    forward.get().path("name").asText());
             assertEquals(discovery ? 1 : 0, resolved.get());
-            if (discovery) {
-                assertEquals("name=" + SemanticRouteTest.ROUTE, resolveQuery.get());
-                assertEquals("Bearer catalog-fixture-token", resolveAuth.get());
-            }
-            assertEquals("team", forward.get().path("namespace").asText());
-            assertEquals(
-                    config.getProperty("wsr.mcp.address"),
-                    forward.get().path("address").asText());
-            assertEquals("1", forward.get().path("labels").path("wsr.revision").asText());
-            assertEquals(
-                    config.getProperty("wsr.catalog.sha256"),
-                    forward.get().path("labels").path("wsr.digest").asText());
+            assertPublication(mode, config, forward.get(), resolveQuery.get(), resolveAuth.get());
             assertEquals("Bearer management-fixture-token", managementAuth.get("POST"));
             McpReadiness.verify(URI.create("http://127.0.0.1:" + mcp + "/mcp"), "route_support");
-            if (discovery) {
-                var transport = new StreamableHttpMcpTransport.Builder()
-                        .url(config.getProperty("wsr.mcp.address"))
-                        .customHeaders(Map.of("MCP-Protocol-Version", McpReadiness.PROTOCOL_VERSION))
-                        .timeout(Duration.ofSeconds(10))
-                        .logRequests(false)
-                        .logResponses(false)
-                        .build();
-                try (var client = new DefaultMcpClient.Builder()
-                        .transport(transport)
-                        .protocolVersion(McpReadiness.PROTOCOL_VERSION)
-                        .initializationTimeout(Duration.ofSeconds(10))
-                        .toolExecutionTimeout(Duration.ofSeconds(10))
-                        .autoHealthCheck(false)
-                        .build()) {
-                    var result = client.executeTool(ToolExecutionRequest.builder()
-                            .name("route_support")
-                            .arguments(RuntimeTest.JSON.writeValueAsString(Map.of("message", "billing")))
-                            .build());
-                    assertFalse(result.isError(), result.resultText());
-                    assertTrue(result.resultText().contains("Billing demo response"), result.resultText());
-                    assertEquals(1, provider.evaluations.get());
-                }
-                assertEquals(1, resolved.get(), "Tool calls must retain the startup publication selection");
+            if (discovery || local) {
+                invokeBillingTool(config, provider);
+                assertEquals(discovery ? 1 : 0, resolved.get(), "Tool calls must retain the startup selection");
             }
             process.destroy();
             assertTrue(process.waitFor(10, TimeUnit.SECONDS), Files.readString(log));
@@ -261,6 +231,9 @@ class PackagedRuntimeIT {
             assertEquals("Bearer management-fixture-token", managementAuth.get("GET"));
             assertEquals("Bearer management-fixture-token", managementAuth.get("DELETE"));
             assertFalse(Files.exists(directory.resolve("runtime.properties")));
+            if (local) {
+                assertLocalSourcesSurvive();
+            }
             assertFalse(Files.readString(log).contains("catalog-fixture-token"));
             assertFalse(Files.readString(log).contains("management-fixture-token"));
             assertFalse(Files.readString(log).contains("classification-fixture-key"));
@@ -271,6 +244,93 @@ class PackagedRuntimeIT {
             }
             control.stop(0);
             executor.shutdownNow();
+        }
+    }
+
+    private void assertPublication(
+            String mode,
+            java.util.Properties config,
+            com.fasterxml.jackson.databind.JsonNode currentForward,
+            String query,
+            String authorization) {
+        boolean discovery = mode.equals("discovery");
+        boolean local = mode.equals("local");
+        assertEquals(
+                discovery ? "route_support" : "reference",
+                currentForward.path("name").asText());
+        if (discovery) {
+            assertEquals("name=" + SemanticRouteTest.ROUTE, query);
+            assertEquals("Bearer catalog-fixture-token", authorization);
+        }
+        assertEquals("team", currentForward.path("namespace").asText());
+        assertEquals(
+                config.getProperty("wsr.mcp.address"),
+                currentForward.path("address").asText());
+        assertEquals(
+                local ? "local" : "1",
+                currentForward.path("labels").path("wsr.revision").asText());
+        if (local) {
+            assertTrue(currentForward.path("labels").path("wsr.digest").asText().matches("[a-f0-9]{64}"));
+        } else {
+            assertEquals(
+                    config.getProperty("wsr.catalog.sha256"),
+                    currentForward.path("labels").path("wsr.digest").asText());
+        }
+    }
+
+    private void invokeBillingTool(java.util.Properties config, LocalProvider provider) throws Exception {
+        var transport = new StreamableHttpMcpTransport.Builder()
+                .url(config.getProperty("wsr.mcp.address"))
+                .customHeaders(Map.of("MCP-Protocol-Version", McpReadiness.PROTOCOL_VERSION))
+                .timeout(Duration.ofSeconds(10))
+                .logRequests(false)
+                .logResponses(false)
+                .build();
+        try (var client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion(McpReadiness.PROTOCOL_VERSION)
+                .initializationTimeout(Duration.ofSeconds(10))
+                .toolExecutionTimeout(Duration.ofSeconds(10))
+                .autoHealthCheck(false)
+                .build()) {
+            var result = client.executeTool(ToolExecutionRequest.builder()
+                    .name("route_support")
+                    .arguments(RuntimeTest.JSON.writeValueAsString(Map.of("message", "billing")))
+                    .build());
+            assertFalse(result.isError(), result.resultText());
+            assertTrue(result.resultText().contains("Billing demo response"), result.resultText());
+            assertEquals(1, provider.evaluations.get());
+        }
+    }
+
+    private void localArguments(List<String> arguments) throws Exception {
+        Path sources = directory.resolve("sources");
+        RuntimeTest.writeLocalSources(sources);
+        Path externalDependencies = directory.resolve("external.dependencies.txt");
+        Files.move(sources.resolve("support/support.dependencies.txt"), externalDependencies);
+        for (int index = 4; index < arguments.size(); ) {
+            String option = arguments.get(index);
+            if (option.startsWith("--catalog-")
+                    || option.startsWith("--service-catalog")
+                    || option.startsWith("--barn-")) {
+                arguments.remove(index);
+                arguments.remove(index);
+            } else {
+                index += 2;
+            }
+        }
+        arguments.addAll(List.of(
+                "--routes-ref",
+                sources.resolve("support/support.camel.yaml").toUri().toString(),
+                "--dependencies",
+                externalDependencies.toString()));
+    }
+
+    private void assertLocalSourcesSurvive() throws Exception {
+        assertTrue(Files.exists(directory.resolve("sources/support/support.camel.yaml")));
+        assertTrue(Files.exists(directory.resolve("external.dependencies.txt")));
+        try (var entries = Files.list(directory)) {
+            assertFalse(entries.anyMatch(path -> path.getFileName().toString().startsWith("wsr-local-")));
         }
     }
 }

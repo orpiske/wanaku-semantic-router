@@ -66,6 +66,16 @@ class RuntimeTest {
         return entries;
     }
 
+    static void writeLocalSources(Path root) throws Exception {
+        for (var entry : reference().entrySet()) {
+            if (!entry.getKey().equals("index.properties")) {
+                Path file = root.resolve(entry.getKey());
+                Files.createDirectories(file.getParent());
+                Files.write(file, entry.getValue());
+            }
+        }
+    }
+
     Properties settings(byte[] archive, int barnPort, int wanakuPort, int mcpPort, int providerPort) throws Exception {
         Properties p = PreviewServiceTest.providerSettings(providerPort);
         p.setProperty("wsr.experts", "supportExpert");

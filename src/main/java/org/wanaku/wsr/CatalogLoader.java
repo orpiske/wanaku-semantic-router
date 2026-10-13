@@ -24,7 +24,13 @@ import ai.wanaku.capabilities.sdk.services.ServicesHttpClient;
 public final class CatalogLoader {
     public static final String CAMEL_VERSION = "4.23.0-SNAPSHOT";
 
-    public record Catalog(Path root, Path main, Path kamelets, Path dependencies, Properties manifest) {}
+    public record Catalog(
+            Path root,
+            Path main,
+            Path kamelets,
+            Path dependencies,
+            Properties manifest,
+            RuntimeSettings.CatalogReference reference) {}
 
     private static final long MAX_UNPACKED = 64L * 1024 * 1024;
 
@@ -160,12 +166,21 @@ public final class CatalogLoader {
             throw new IOException("Dependency reference differs from index");
         }
         Path dependencies = contained(root, dependencyReference);
-        Path kamelets = validateKamelets(root, manifest);
         String configurationReference = RuntimeSettings.required(manifest, "configuration");
         if (!configurationReference.equals(index.getProperty("catalog.properties." + selection.service()))) {
             throw new IOException("Configuration reference differs from index");
         }
-        properties(contained(root, configurationReference));
+        return validateResources(root, main, dependencies, manifest, selection);
+    }
+
+    static Catalog validateResources(
+            Path root, Path main, Path dependencies, Properties manifest, RuntimeSettings.CatalogReference selection)
+            throws IOException {
+        require(manifest, "contract.version", "1");
+        require(manifest, "camel.version", CAMEL_VERSION);
+        require(manifest, "input.profile", "message-to-string/v1");
+        Path kamelets = validateKamelets(root, manifest);
+        properties(contained(root, RuntimeSettings.required(manifest, "configuration")));
         if (!Files.isRegularFile(main) || !Files.isRegularFile(dependencies) || !Files.isDirectory(kamelets)) {
             throw new IOException("Catalog resource is missing");
         }
@@ -182,7 +197,7 @@ public final class CatalogLoader {
             throw new IOException("Guard expert bean is missing");
         }
         RuntimeSettings.identifier(RuntimeSettings.required(manifest, "tool.name"));
-        return new Catalog(root, main, kamelets, dependencies, manifest);
+        return new Catalog(root, main, kamelets, dependencies, manifest, selection);
     }
 
     private static Path validateKamelets(Path root, Properties manifest) throws IOException {
