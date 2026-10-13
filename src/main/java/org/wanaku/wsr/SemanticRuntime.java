@@ -1,12 +1,18 @@
 package org.wanaku.wsr;
 
 import java.net.URI;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
 import org.apache.camel.console.DevConsole;
+import org.apache.camel.main.BaseMainSupport;
 import org.apache.camel.main.Main;
+import org.apache.camel.main.MainListenerSupport;
+import org.apache.camel.semantic.SemanticAuditConfiguration;
 import org.apache.camel.semantic.SemanticAuditConsole;
+import org.apache.camel.semantic.SemanticEvaluations;
+import org.apache.camel.support.ResourceHelper;
 
 /** Startup ordering is explicit: catalog -> dependencies -> Camel/MCP -> discovery -> forward. */
 public final class SemanticRuntime implements AutoCloseable {
@@ -111,6 +117,24 @@ public final class SemanticRuntime implements AutoCloseable {
                 "catalog_digest", settings.catalog().reference().digest());
         auditSink = new WanakuAuditSink(auditSettings, source);
         main.bind("wanakuAudit", auditSink);
+        main.addMainListener(new MainListenerSupport() {
+            @Override
+            public void afterConfigure(BaseMainSupport support) {
+                // The catalog is loaded now; replace its audit settings before Camel starts.
+                var context = main.getCamelContext();
+                var evaluations = SemanticEvaluations.get(context);
+                var resource = ResourceHelper.resolveResource(
+                        context, catalog.main().toUri().toString());
+                var audit = new SemanticAuditConfiguration(
+                        auditSettings.enabled(),
+                        Map.of(),
+                        auditSettings.enabled() ? List.of("memory", "wanakuAudit") : List.of("memory"),
+                        "memory",
+                        1000,
+                        1000);
+                evaluations.replace(resource, evaluations.snapshot(), audit);
+            }
+        });
         var configuration = CatalogLoader.properties(
                 CatalogLoader.contained(catalog.root(), catalog.manifest().getProperty("configuration")));
         for (String key : configuration.stringPropertyNames()) {

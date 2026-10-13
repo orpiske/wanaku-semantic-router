@@ -11,7 +11,7 @@ wsr.bind=127.0.0.1
 wsr.port=8090
 wsr.http.timeout-ms=30000
 wsr.status.port=8091
-# Catalogs enable Camel capture and select the wanakuAudit sink.
+# Enable Camel semantic audit capture and forwarding to Wanaku at runtime.
 wsr.audit.enabled=true
 # Defaults to the Wanaku origin followed by /api/v1/audit/semantic.
 # wsr.audit.url=http://127.0.0.1:8080/api/v1/audit/semantic
