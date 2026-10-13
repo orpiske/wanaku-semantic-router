@@ -113,8 +113,8 @@ public final class SemanticRuntime implements AutoCloseable {
                 "instance_id", instance,
                 "forward_name", settings.registration().forwardName(),
                 "namespace", settings.registration().namespace(),
-                "catalog_revision", settings.catalog().reference().revision(),
-                "catalog_digest", settings.catalog().reference().digest());
+                "catalog_revision", catalog.reference().revision(),
+                "catalog_digest", catalog.reference().digest());
         auditSink = new WanakuAuditSink(auditSettings, source);
         main.bind("wanakuAudit", auditSink);
         main.addMainListener(new MainListenerSupport() {

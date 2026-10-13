@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Base64;
@@ -67,7 +68,16 @@ class AuditRuntimeTest {
                 true);
     }
 
+    @Test
+    void localFilesCaptureAuditWithSnapshotMetadataWithoutBarn() throws Exception {
+        exercise("", null, true);
+    }
+
     private void exercise(String catalogAudit, Boolean enabled) throws Exception {
+        exercise(catalogAudit, enabled, false);
+    }
+
+    private void exercise(String catalogAudit, Boolean enabled, boolean localFiles) throws Exception {
         Map<String, byte[]> entries = RuntimeTest.reference();
         String yaml = new String(entries.get("support/support.camel.yaml"), StandardCharsets.UTF_8);
         yaml = yaml.replace(
@@ -96,16 +106,18 @@ class AuditRuntimeTest {
         byte[] archive = RuntimeTest.archive(entries);
         var records = new CopyOnWriteArrayList<JsonNode>();
         var receiverStatus = new AtomicInteger(200);
+        var downloads = new AtomicInteger();
         var forward = new AtomicReference<JsonNode>();
         HttpServer control = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 16);
         var executor = Executors.newVirtualThreadPerTaskExecutor();
         control.setExecutor(executor);
-        control.createContext(
-                "/api/v1/service-catalog/download",
-                exchange -> PreviewService.respond(
-                        exchange,
-                        200,
-                        Map.of("data", Map.of("data", Base64.getEncoder().encodeToString(archive)))));
+        control.createContext("/api/v1/service-catalog/download", exchange -> {
+            downloads.incrementAndGet();
+            PreviewService.respond(
+                    exchange,
+                    200,
+                    Map.of("data", Map.of("data", Base64.getEncoder().encodeToString(archive))));
+        });
         control.createContext("/api/v1/forwards", exchange -> {
             switch (exchange.getRequestMethod()) {
                 case "POST" -> {
@@ -137,6 +149,21 @@ class AuditRuntimeTest {
             var fixture = new RuntimeTest();
             fixture.directory = directory;
             var deployment = fixture.settings(archive, port, port, mcp, provider.port());
+            if (localFiles) {
+                Path source = directory.resolve("source");
+                for (var entry : entries.entrySet()) {
+                    Path file = source.resolve(entry.getKey());
+                    Files.createDirectories(file.getParent());
+                    Files.write(file, entry.getValue());
+                }
+                deployment
+                        .keySet()
+                        .removeIf(key -> key.toString().startsWith("wsr.catalog.")
+                                || key.toString().startsWith("wsr.barn."));
+                deployment.setProperty(
+                        "wsr.routes-ref",
+                        source.resolve("support/support.camel.yaml").toUri().toString());
+            }
             if (enabled != null) {
                 deployment.setProperty("wsr.audit.enabled", enabled.toString());
             }
@@ -210,7 +237,21 @@ class AuditRuntimeTest {
                                         .asText(),
                                 evaluation.path("source").path("instance_id").asText());
                         assertEquals(
-                                "1",
+                                localFiles ? "local" : "1",
+                                evaluation
+                                        .path("source")
+                                        .path("catalog_revision")
+                                        .asText());
+                        String digest =
+                                evaluation.path("source").path("catalog_digest").asText();
+                        assertTrue(digest.matches("[0-9a-f]{64}"));
+                        assertEquals(
+                                forward.get().path("labels").path("wsr.digest").asText(), digest);
+                        assertEquals(
+                                forward.get()
+                                        .path("labels")
+                                        .path("wsr.revision")
+                                        .asText(),
                                 evaluation
                                         .path("source")
                                         .path("catalog_revision")
@@ -225,6 +266,7 @@ class AuditRuntimeTest {
                     }
                 }
             }
+            assertEquals(localFiles ? 0 : 1, downloads.get());
             if (Boolean.FALSE.equals(enabled)) {
                 assertEquals(List.of(), records);
             }
