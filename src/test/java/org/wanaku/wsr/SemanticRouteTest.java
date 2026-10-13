@@ -244,6 +244,12 @@ class SemanticRouteTest {
                     exchange -> PreviewService.respond(exchange, status, Map.of("error", "secret-fixture-value")))) {
                 var result = ApplicationTest.execute("runtime", "--semantic-route", ROUTE, "--barn-url", barn.url());
                 assertNotEquals(0, result.code());
+                assertTrue(
+                        result.error().contains("Barn semantic route lookup failed (HTTP " + status + ")"),
+                        result.error());
+                if (status == 404) {
+                    assertTrue(result.error().contains("check the saved route name and publication in Barn"));
+                }
                 assertFalse(result.error().contains("secret-fixture-value"), result.error());
                 assertFalse(result.output().contains("secret-fixture-value"), result.output());
                 assertEquals(1, barn.requests.get());
