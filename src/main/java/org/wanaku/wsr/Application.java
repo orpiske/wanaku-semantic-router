@@ -39,7 +39,10 @@ public final class Application implements Callable<Integer> {
             }
             // Provider errors can contain credentials or submitted data. Do not print their
             // messages.
-            command.getErr().println("WSR command failed: " + failure.getClass().getSimpleName());
+            String diagnostic = failure instanceof SemanticRouteResolver.LookupFailure
+                    ? failure.getMessage()
+                    : failure.getClass().getSimpleName();
+            command.getErr().println("WSR command failed: " + diagnostic);
             return CommandLine.ExitCode.SOFTWARE;
         });
     }
