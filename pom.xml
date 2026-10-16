@@ -23,7 +23,7 @@
     <jackson-databind.version>2.22.3</jackson-databind.version>
     <slf4j.version>2.0.20</slf4j.version>
     <junit-jupiter.version>5.13.4</junit-jupiter.version>
-    <maven-compiler-plugin.version>3.14.1</maven-compiler-plugin.version>
+    <maven-compiler-plugin.version>3.16.0</maven-compiler-plugin.version>
     <maven-surefire-plugin.version>3.6.0</maven-surefire-plugin.version>
     <maven-jar-plugin.version>3.4.2</maven-jar-plugin.version>
     <maven-dependency-plugin.version>3.9.0</maven-dependency-plugin.version>
