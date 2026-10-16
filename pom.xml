@@ -17,7 +17,7 @@
     <spotless-maven-plugin.version>3.10.2</spotless-maven-plugin.version>
     <palantir-java-format.version>2.71.0</palantir-java-format.version>
     <wanaku-capabilities-sdk.version>0.3.0-SNAPSHOT</wanaku-capabilities-sdk.version>
-    <langchain4j-mcp.version>1.20.1-beta30</langchain4j-mcp.version>
+    <langchain4j-mcp.version>1.22.0-beta32</langchain4j-mcp.version>
     <jgit.version>7.8.0.202609011348-r</jgit.version>
     <picocli.version>4.7.7</picocli.version>
     <jackson-databind.version>2.22.3</jackson-databind.version>
