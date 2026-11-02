@@ -99,7 +99,7 @@ To use a different configuration, set the `log4j.configurationFile` system prope
 java -Dlog4j.configurationFile=/path/to/log4j2.properties -jar wanaku-semantic-router.jar
 ```
 
-In a container, set the property in `JAVA_TOOL_OPTIONS`. Mount the file into the container.
+In a container, mount the file and add the property to `JAVA_TOOL_OPTIONS`. The image sets `JAVA_TOOL_OPTIONS=-Duser.home=/home/wsr`. Keep this value when you add the property.
 
 ## Next steps
 
