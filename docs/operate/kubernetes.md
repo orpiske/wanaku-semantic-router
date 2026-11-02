@@ -25,7 +25,7 @@ Each probe endpoint accepts `GET` only. Other methods get `405`. Paths must matc
 | `GET /api/v1/health/ready` | `state` is `ready` and the Camel context is started | Any other condition |
 | `GET /api/v1/health/live` | `state` is `starting`, or `state` is `ready` and the Camel context is started | `failed`, `stopping`, `stopped`, or `ready` with a stopped Camel context |
 
-WSR sets `state` to `ready` only after these steps succeed: catalog load, dependency resolution, Camel start, the MCP self-check, and forward registration. Registration must report an available forward with one discovered tool. A failed step sets `state` to `failed`. The process then exits with status `1`. The status body contains the failure type in `failure`.
+WSR sets `state` to `ready` only after these steps succeed: catalog load, dependency resolution, Camel start, the MCP self-check, and forward registration. Registration must report an available forward with one discovered tool. WSR registers with `POST /api/v1/forwards?replace=true`, so a restarted runtime replaces a forward that a killed process did not remove. A failed step sets `state` to `failed`. The process then exits with status `1`. The status body contains the failure type in `failure`.
 
 SIGTERM makes all three probes return `503` before WSR removes its forward. Kubernetes then removes the pod from Service endpoints while deregistration runs. WSR checks the `wsr.instance` label before it removes the forward. It does not remove a forward that a replacement process registered.
 

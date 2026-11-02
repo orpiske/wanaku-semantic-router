@@ -47,7 +47,9 @@ final class ForwardRegistration implements AutoCloseable {
                         "namespace", registration.namespace(),
                         "labels", labels))
                 .getBytes(StandardCharsets.UTF_8);
-        var request = Http.request(endpoint(""), registration.token())
+        // Replace a forward that a killed process left behind. Wanaku answers 409 to a plain POST for an
+        // existing name, and the restarted runtime would then fail on every start.
+        var request = Http.request(endpoint("?replace=true"), registration.token())
                 .timeout(httpTimeout)
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofByteArray(body))

@@ -158,6 +158,11 @@ class RuntimeTest {
                                         Base64.getEncoder().encodeToString(archive)))));
         control.createContext("/api/v1/forwards", exchange -> {
             if (exchange.getRequestMethod().equals("POST")) {
+                // Wanaku rejects a plain POST for an existing forward: a restarted runtime must replace it.
+                if (!"replace=true".equals(exchange.getRequestURI().getQuery())) {
+                    PreviewService.respond(exchange, 409, Map.of("error", "forward already exists"));
+                    return;
+                }
                 var body = JSON.readTree(exchange.getRequestBody());
                 forward.set(body);
                 try {
