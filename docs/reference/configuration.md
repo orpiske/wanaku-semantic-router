@@ -89,6 +89,18 @@ The example files are `config/runtime.properties.example` and `config/preview.pr
 
 The status endpoint defaults to `http://127.0.0.1:8091/api/v1/status`. Its response contains `state`, `revision`, `digest`, `camelVersion`, and `forwardName`. It includes `catalogCamelBuild` when the catalog supplies build metadata. This field describes the publication, not the runtime binaries. A startup failure writes the same fields and the failure type to standard error. It also writes them to `/dev/termination-log` when that file is writable. It exits with a failure status. The status listener also serves the [health probes](../operate/kubernetes.md#health-probes). WSR checks its instance label before it removes an attempted registration. This check also applies when Wanaku accepts the POST but its response is lost or invalid.
 
+## Logging
+
+WSR uses SLF4J with Log4j2 as the logging backend. The JAR contains a default `log4j2.properties` file. This file writes to the console. It sets `org.apache.camel` and the root logger to `INFO`. It sets `ai.wanaku` and `org.wanaku.wsr` to `DEBUG`.
+
+To use a different configuration, set the `log4j.configurationFile` system property:
+
+```shell
+java -Dlog4j.configurationFile=/path/to/log4j2.properties -jar wanaku-semantic-router.jar
+```
+
+In a container, set the property in `JAVA_TOOL_OPTIONS`. Mount the file into the container.
+
 ## Next steps
 
 - [Run a published semantic route](../operate/run-a-published-route.md): start the runtime with these settings.
