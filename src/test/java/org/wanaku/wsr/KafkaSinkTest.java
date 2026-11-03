@@ -82,7 +82,7 @@ class KafkaSinkTest {
                         - setBody:
                             constant: Sent to Kafka
                 """);
-        var producer = new MockProducer<String, String>(true, null, new StringSerializer(), new StringSerializer());
+        var producer = new MockProducer<>(true, null, new StringSerializer(), new StringSerializer());
         AtomicReference<Properties> clientProperties = new AtomicReference<>();
         try (var dependencies = Dependencies.load(declarations, directory.resolve("resolved"))) {
             var main = new Main();
