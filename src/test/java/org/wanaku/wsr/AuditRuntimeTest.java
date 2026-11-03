@@ -189,7 +189,7 @@ class AuditRuntimeTest {
                         .toolExecutionTimeout(Duration.ofSeconds(10))
                         .autoHealthCheck(false)
                         .build()) {
-                    assertEquals("route_support", client.listTools().get(0).name());
+                    assertEquals("route_support", client.listTools().getFirst().name());
                     var request = ToolExecutionRequest.builder()
                             .name("route_support")
                             .arguments("{\"message\":\"billing\"}")

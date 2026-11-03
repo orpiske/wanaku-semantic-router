@@ -224,7 +224,7 @@ class RuntimeTest {
                         .toolExecutionTimeout(Duration.ofSeconds(10))
                         .autoHealthCheck(false)
                         .build()) {
-                    assertEquals("route_support", client.listTools().get(0).name());
+                    assertEquals("route_support", client.listTools().getFirst().name());
                     for (String message :
                             new String[] {"billing", "technical", "unmatched", "failure", "invalid", "action_failure"
                             }) {
