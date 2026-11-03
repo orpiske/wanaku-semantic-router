@@ -78,7 +78,7 @@ class ExpertsTest {
     }
 
     @Test
-    void rejectsMissingGuard() throws Exception {
+    void rejectsMissingGuard() {
         Properties settings = settings();
         settings.setProperty("wsr.semantic-route.guard-bean", "missing");
         Main main = new Main();
@@ -90,7 +90,7 @@ class ExpertsTest {
     }
 
     @Test
-    void sanitizesInvalidPropertyValues() throws Exception {
+    void sanitizesInvalidPropertyValues() {
         Properties settings = settings();
         settings.setProperty("wsr.expert.fixture.properties.limit", "secret-value");
         Main main = new Main();

@@ -236,7 +236,7 @@ class WanakuAuditSinkTest {
         return URI.create("http://127.0.0.1:" + server.getAddress().getPort() + "/api/v1/audit/semantic");
     }
 
-    private static WanakuAuditSink sink(HttpServer server) throws Exception {
+    private static WanakuAuditSink sink(HttpServer server) {
         var sink = new WanakuAuditSink(new AuditSettings(true, url(server)), SOURCE);
         sink.start();
         return sink;

@@ -40,7 +40,7 @@ class DependenciesTest {
     }
 
     @Test
-    void rejectsInvalidUnpinnedAndUnpackagedDeclarationsBeforeResolution() throws Exception {
+    void rejectsInvalidUnpinnedAndUnpackagedDeclarationsBeforeResolution() {
         for (String invalid : List.of(
                 "example:expert",
                 "example:expert:1.0-SNAPSHOT",
