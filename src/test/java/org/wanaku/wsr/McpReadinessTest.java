@@ -192,68 +192,69 @@ class McpReadinessTest {
                     return;
                 }
                 Map<String, Object> result;
-                if ("initialize".equals(method)) {
-                    result = Map.of(
+                switch (method) {
+                    case "initialize" -> result = Map.of(
                             "protocolVersion",
-                                    request.path("params")
-                                            .path("protocolVersion")
-                                            .asText(),
+                            request.path("params")
+                                    .path("protocolVersion")
+                                    .asText(),
                             "capabilities", Map.of("tools", Map.of("listChanged", false)),
                             "serverInfo", Map.of("name", "fixture", "version", "1"));
-                } else if ("tools/list".equals(method)) {
-                    discoveries.incrementAndGet();
-                    if (discoveryError) {
-                        respond(
-                                exchange,
-                                Map.of(
-                                        "jsonrpc",
-                                        "2.0",
-                                        "id",
-                                        request.get("id"),
-                                        "error",
-                                        Map.of("code", -32603, "message", "secret-fixture-value")));
+                    case "tools/list" -> {
+                        discoveries.incrementAndGet();
+                        if (discoveryError) {
+                            respond(
+                                    exchange,
+                                    Map.of(
+                                            "jsonrpc",
+                                            "2.0",
+                                            "id",
+                                            request.get("id"),
+                                            "error",
+                                            Map.of("code", -32603, "message", "secret-fixture-value")));
+                            return;
+                        }
+                        List<Map<String, Object>> tools = new ArrayList<>();
+                        for (String name : names) {
+                            tools.add(Map.of(
+                                    "name",
+                                    name,
+                                    "description",
+                                    "Fixture tool",
+                                    "inputSchema",
+                                    Map.of(
+                                            "type",
+                                            "object",
+                                            "properties",
+                                            Map.of("message", Map.of("type", "string")),
+                                            "required",
+                                            List.of("message"))));
+                        }
+                        result = Map.of("tools", tools);
+                    }
+                    case "ping" -> result = Map.of();
+                    default -> {
+                        if ("tools/call".equals(method)) {
+                            invocations.incrementAndGet();
+                        } else {
+                            unexpected.incrementAndGet();
+                            unexpectedMethod = method;
+                        }
+                        if (request.has("id")) {
+                            respond(
+                                    exchange,
+                                    Map.of(
+                                            "jsonrpc",
+                                            "2.0",
+                                            "id",
+                                            request.get("id"),
+                                            "error",
+                                            Map.of("code", -32601, "message", "Method not found")));
+                        } else {
+                            exchange.sendResponseHeaders(400, -1);
+                        }
                         return;
                     }
-                    List<Map<String, Object>> tools = new ArrayList<>();
-                    for (String name : names) {
-                        tools.add(Map.of(
-                                "name",
-                                name,
-                                "description",
-                                "Fixture tool",
-                                "inputSchema",
-                                Map.of(
-                                        "type",
-                                        "object",
-                                        "properties",
-                                        Map.of("message", Map.of("type", "string")),
-                                        "required",
-                                        List.of("message"))));
-                    }
-                    result = Map.of("tools", tools);
-                } else if ("ping".equals(method)) {
-                    result = Map.of();
-                } else {
-                    if ("tools/call".equals(method)) {
-                        invocations.incrementAndGet();
-                    } else {
-                        unexpected.incrementAndGet();
-                        unexpectedMethod = method;
-                    }
-                    if (request.has("id")) {
-                        respond(
-                                exchange,
-                                Map.of(
-                                        "jsonrpc",
-                                        "2.0",
-                                        "id",
-                                        request.get("id"),
-                                        "error",
-                                        Map.of("code", -32601, "message", "Method not found")));
-                    } else {
-                        exchange.sendResponseHeaders(400, -1);
-                    }
-                    return;
                 }
                 respond(exchange, Map.of("jsonrpc", "2.0", "id", request.get("id"), "result", result));
             }
