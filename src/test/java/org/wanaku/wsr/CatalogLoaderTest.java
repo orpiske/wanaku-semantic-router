@@ -139,7 +139,7 @@ class CatalogLoaderTest {
     }
 
     @Test
-    void rejectsWrongDigestBeforeCreatingExtractionDirectory() throws Exception {
+    void rejectsWrongDigestBeforeCreatingExtractionDirectory() {
         var selection =
                 new RuntimeSettings.CatalogReference("semantic-support-spike", "support", "1", "0".repeat(64), null);
         Path work = directory.resolve("work");

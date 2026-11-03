@@ -73,7 +73,7 @@ class CatalogHttpTest {
     }
 
     @Test
-    void remoteErrorsAndMalformedJsonDoNotExposeResponseBodies() throws Exception {
+    void remoteErrorsAndMalformedJsonDoNotExposeResponseBodies() {
         response.set("secret-token private-configuration");
         for (int code : List.of(403, 200)) {
             status = code;

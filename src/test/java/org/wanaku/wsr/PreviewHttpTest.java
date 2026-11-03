@@ -63,7 +63,7 @@ class PreviewHttpTest {
         public void validate(SemanticEvaluation evaluation) {}
 
         @Override
-        public SemanticResult evaluate(SemanticEvaluation evaluation, Object state) throws Exception {
+        public SemanticResult evaluate(SemanticEvaluation evaluation, Object state) {
             running.incrementAndGet();
             entered.countDown();
             try {
