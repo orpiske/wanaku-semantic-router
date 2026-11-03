@@ -1,6 +1,7 @@
 package org.wanaku.wsr;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
@@ -28,7 +29,7 @@ class WolfDefenderIntegrationTest {
             var result = service.evaluate(
                     new PreviewService.Request("wolf", "injection", Map.of(), "Please help me find my invoice."));
             assertEquals("boolean", result.get("resultType"));
-            assertTrue(result.get("value") instanceof Boolean);
+            assertInstanceOf(Boolean.class, result.get("value"));
         }
     }
 }

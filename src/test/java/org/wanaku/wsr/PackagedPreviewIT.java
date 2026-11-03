@@ -2,6 +2,7 @@ package org.wanaku.wsr;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URI;
@@ -74,7 +75,7 @@ class PackagedPreviewIT {
                     Thread.sleep(50);
                 }
             }
-            assertTrue(unauthenticated != null, Files.readString(log));
+            assertNotNull(unauthenticated, Files.readString(log));
             assertEquals(401, unauthenticated.statusCode());
             assertEquals(0, provider.evaluations.get(), "Unauthenticated requests must not invoke the provider");
             var rejectedToken = http.send(
