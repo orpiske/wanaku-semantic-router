@@ -2,6 +2,7 @@ package org.wanaku.wsr;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -255,7 +256,7 @@ class InitializationTest {
             thread.interrupt();
             thread.join(5000);
             assertFalse(thread.isAlive());
-            assertTrue(failure.get() instanceof InterruptedException);
+            assertInstanceOf(InterruptedException.class, failure.get());
             assertTrue(interrupted.get());
             assertFalse(ProcessHandle.of(Long.parseLong(Files.readString(pid)))
                     .map(ProcessHandle::isAlive)

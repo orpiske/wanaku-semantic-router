@@ -2,6 +2,7 @@ package org.wanaku.wsr;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -51,7 +52,7 @@ class LocalArtifactsTest {
         Files.writeString(external, "# changed\n");
         assertEquals("# external override\n", Files.readString(first.dependencies()));
         var changed = load(deployment);
-        assertFalse(first.reference().digest().equals(changed.reference().digest()));
+        assertNotEquals(first.reference().digest(), changed.reference().digest());
         CatalogLoader.delete(first.root());
         CatalogLoader.delete(second.root());
         CatalogLoader.delete(changed.root());
