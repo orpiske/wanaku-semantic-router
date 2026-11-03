@@ -332,9 +332,10 @@ class RuntimeTest {
 
     @Test
     void failedStartupExpertSnapshotAndRegistrationLeaveNoUnusableForward() throws Exception {
-        for (String scenario : new String[] {"yaml", "expert", "registration"}) {
+        for (String scenario : new String[] {"yaml", "expert", "registration", "conflict"}) {
             boolean invalidYaml = scenario.equals("yaml");
-            boolean beforeRegistration = !scenario.equals("registration");
+            boolean conflict = scenario.equals("conflict");
+            boolean beforeRegistration = !scenario.equals("registration") && !conflict;
             var entries = reference();
             if (invalidYaml) {
                 entries.put("support/support.camel.yaml", "- route: invalid".getBytes());
@@ -355,6 +356,10 @@ class RuntimeTest {
                 if (exchange.getRequestMethod().equals("POST")) {
                     forward.set(JSON.readTree(exchange.getRequestBody()));
                     registrations.incrementAndGet();
+                    if (conflict) {
+                        PreviewService.respond(exchange, 409, Map.of("error", "forward already exists"));
+                        return;
+                    }
                     PreviewService.respond(
                             exchange,
                             200,
@@ -380,6 +385,14 @@ class RuntimeTest {
                     assertEquals(200, status.probe("GET", "/api/v1/status"));
                     assertEquals(beforeRegistration ? 0 : 1, registrations.get());
                     assertEquals(beforeRegistration ? 0 : 1, deletions.get());
+                    if (!beforeRegistration) {
+                        // The status names the failed step, so an operator can see it in the pod status.
+                        assertEquals(
+                                conflict
+                                        ? "Wanaku forward registration failed (HTTP 409)"
+                                        : "Wanaku did not discover a usable WSR forward (available=false, tools_discovered=0)",
+                                runtime.status().get("failure"));
+                    }
                 }
                 assertEquals(0, provider.evaluations.get());
                 assertEquals(0, Files.list(directory).count());

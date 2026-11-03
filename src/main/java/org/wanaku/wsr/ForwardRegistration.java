@@ -56,15 +56,21 @@ final class ForwardRegistration implements AutoCloseable {
                 .build();
         // An accepted POST can lose its response. Claim the attempt before any network operation.
         registered = true;
-        var response = mapper.readTree(Http.send(request));
+        var exchange = Http.exchange(request);
+        if (exchange.statusCode() < 200 || exchange.statusCode() >= 300) {
+            throw new StartupFailure("Wanaku forward registration failed (HTTP " + exchange.statusCode() + ")");
+        }
+        var response = mapper.readTree(exchange.body());
         var data = response.has("data") ? response.get("data") : response;
         if (data.isArray() && data.size() == 1) {
             data = data.get(0);
         }
-        if (!data.path("forward").path("available").asBoolean(false)
-                || data.path("tools_discovered").asInt() != 1) {
+        boolean available = data.path("forward").path("available").asBoolean(false);
+        int tools = data.path("tools_discovered").asInt();
+        if (!available || tools != 1) {
             close();
-            throw new IOException("Wanaku did not discover a usable WSR forward");
+            throw new StartupFailure("Wanaku did not discover a usable WSR forward (available=" + available
+                    + ", tools_discovered=" + tools + ")");
         }
     }
 

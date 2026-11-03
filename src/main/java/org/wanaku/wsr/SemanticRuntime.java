@@ -49,7 +49,8 @@ public final class SemanticRuntime implements AutoCloseable {
                 startResources();
                 state = "ready";
             } catch (Exception e) {
-                failure = e.getClass().getSimpleName();
+                String diagnostic = StartupFailure.diagnostic(e);
+                failure = diagnostic != null ? diagnostic : e.getClass().getSimpleName();
                 state = "failed";
                 try {
                     closeResources();
@@ -81,9 +82,21 @@ public final class SemanticRuntime implements AutoCloseable {
                     default -> settings.runtime().bind();
                 };
         checkCancellation();
-        McpReadiness.verify(
-                new URI("http", null, readinessHost, settings.runtime().port(), "/mcp", null, null),
-                catalog.manifest().getProperty("tool.name"));
+        try {
+            McpReadiness.verify(
+                    new URI("http", null, readinessHost, settings.runtime().port(), "/mcp", null, null),
+                    catalog.manifest().getProperty("tool.name"));
+        } catch (InterruptedException e) {
+            throw e;
+        } catch (Exception e) {
+            if (StartupFailure.diagnostic(e) != null) {
+                throw e;
+            }
+            // Name the step and the cause type only: cause messages come from the MCP client library.
+            Throwable cause = e.getCause() != null ? e.getCause() : e;
+            throw new StartupFailure(
+                    "MCP readiness self-check failed (" + cause.getClass().getSimpleName() + ")", e);
+        }
         checkCancellation();
         registration = new ForwardRegistration(
                 settings.registration(),

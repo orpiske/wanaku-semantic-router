@@ -81,7 +81,7 @@ final class McpReadiness {
     private static void verifyTools(McpClient client, String expectedTool) throws IOException {
         var tools = client.listTools();
         if (tools.size() != 1 || !expectedTool.equals(tools.getFirst().name())) {
-            throw new IOException("MCP tool discovery differs from catalog contract");
+            throw new StartupFailure("MCP tool discovery differs from catalog contract (tools=" + tools.size() + ")");
         }
     }
 
