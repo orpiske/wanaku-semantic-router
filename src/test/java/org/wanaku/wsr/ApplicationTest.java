@@ -94,9 +94,11 @@ class ApplicationTest {
         Path file = directory.resolve("preview.properties");
         Files.writeString(
                 file,
-                "wsr.experts=test\n"
-                        + "wsr.expert.test.class=example.TestAdapter\n"
-                        + "wsr.preview.port=secret-fixture-value\n");
+                """
+                        wsr.experts=test
+                        wsr.expert.test.class=example.TestAdapter
+                        wsr.preview.port=secret-fixture-value
+                        """);
         var invalid = execute("preview", file.toString());
         assertEquals(2, invalid.code());
         assertTrue(invalid.error().contains("Invalid deployment configuration"));
