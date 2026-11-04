@@ -39,6 +39,7 @@
       "items": [
         { "text": "Building", "link": "contributing/building" },
         { "text": "CI automation", "link": "contributing/ci" },
+        { "text": "Release guide", "link": "contributing/release-guide" },
         { "text": "Testing", "link": "contributing/testing" },
         { "text": "Write documentation", "link": "contributing/documentation" },
         { "text": "Java SDK reuse", "link": "contributing/sdk-reuse" }

@@ -12,6 +12,7 @@ This repository implements [Barn #182](https://github.com/wanaku-ai/wanaku-barn/
 ## Pages in this section
 
 - [Build Wanaku Semantic Router](building.md): build and package WSR from source, and format the code.
+- [Release guide](release-guide.md): prepare a release and publish the runtime ZIP and container images.
 - [CI automation](ci.md): the GitHub Actions workflows, the publishing setup, manual releases, and native architecture builds.
 - [Write documentation](documentation.md): the page conventions and the checks that CI runs on `docs/`.
 - [Test Wanaku Semantic Router](testing.md): the test suites that need more than a Maven build.
